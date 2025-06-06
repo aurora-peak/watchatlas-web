@@ -19,11 +19,7 @@ import {
   import Link from "next/link";
   import { GoogleAuthProvider, signInWithCredential } from "firebase/auth";
   import { auth } from "../lib/firebase";
-  declare global {
-    interface Window {
-      google: any;
-    }
-  }
+  
   export default function NavBar() {
     const [search, setSearch] = useState("");
     const [user, setUser] = useState<{ name: string; picture: string } | null>(null);
@@ -59,10 +55,8 @@ import {
                 };
   
                 console.log("✅ Signed in as:", userData.name);
-  
                 setUser(userData);
                 localStorage.setItem("user", JSON.stringify(userData));
-  
                 window.location.href = "/settings";
               } catch (err) {
                 console.error("🔥 Firebase Auth error:", err);
@@ -87,7 +81,7 @@ import {
     }, []);
   
     return (
-        <Box
+      <Box
         position="sticky"
         top="0"
         zIndex="1000"
@@ -108,7 +102,11 @@ import {
             <Link href="/">
               <HStack spacing={2} align="center">
                 <Box boxSize="32px">
-                  <img src="/logo.png" alt="WatchAtlas Logo" style={{ width: "100%", height: "auto" }} />
+                  <img
+                    src="/logo.png"
+                    alt="WatchAtlas Logo"
+                    style={{ width: "100%", height: "auto" }}
+                  />
                 </Box>
                 <Heading
                   size="md"
