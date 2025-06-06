@@ -20,6 +20,12 @@ import {
   import { GoogleAuthProvider, signInWithCredential } from "firebase/auth";
   import { auth } from "../lib/firebase";
   
+  declare global {
+    interface Window {
+      google: any;
+    }
+  }
+  
   export default function NavBar() {
     const [search, setSearch] = useState("");
     const [user, setUser] = useState<{ name: string; picture: string } | null>(null);
@@ -64,13 +70,10 @@ import {
             },
           });
   
-          window.google.accounts.id.renderButton(
-            document.getElementById("g_id_signin"),
-            {
-              theme: "outline",
-              size: "large",
-            }
-          );
+          window.google.accounts.id.renderButton(document.getElementById("g_id_signin"), {
+            theme: "outline",
+            size: "large",
+          });
         }
       };
   
@@ -102,11 +105,7 @@ import {
             <Link href="/">
               <HStack spacing={2} align="center">
                 <Box boxSize="32px">
-                  <img
-                    src="/logo.png"
-                    alt="WatchAtlas Logo"
-                    style={{ width: "100%", height: "auto" }}
-                  />
+                  <img src="/logo.png" alt="WatchAtlas Logo" style={{ width: "100%", height: "auto" }} />
                 </Box>
                 <Heading
                   size="md"
@@ -156,6 +155,7 @@ import {
                   <MenuItem
                     onClick={() => {
                       localStorage.removeItem("user");
+                      localStorage.removeItem("favoriteCountries");
                       setUser(null);
                       router.push("/");
                     }}
