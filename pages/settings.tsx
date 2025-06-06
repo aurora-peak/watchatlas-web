@@ -105,7 +105,7 @@ export default function SettingsPage() {
       {Object.keys(groupedByContinent).length === 0 ? (
         <Text color="red.500">Failed to load country list.</Text>
       ) : (
-        <CheckboxGroup value={selected} onChange={setSelected}>
+        <CheckboxGroup value={selected} onChange={(val) => setSelected(val as string[])}>
           <SimpleGrid columns={{ base: 1, sm: 2, md: 3, lg: 6 }} spacing={6}>
             {Object.entries(groupedByContinent).map(([continent, countries]) => {
               const filtered = countries.filter((country) =>
