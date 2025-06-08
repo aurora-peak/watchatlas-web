@@ -50,7 +50,7 @@ export default function DetailsPage() {
       setUser(firebaseUser);
       if (firebaseUser) {
         const prefs = await loadUserPreferences(firebaseUser.uid);
-        setFavoriteCountries(prefs ?? []);
+        setFavoriteCountries(prefs?.favoriteCountries ?? []);
       }
     });
     return () => unsubscribe();

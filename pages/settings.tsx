@@ -12,9 +12,9 @@ import {
   Button,
   Input,
   useToast,
+  Switch,
   FormControl,
   FormLabel,
-  Switch,
   useColorMode,
 } from "@chakra-ui/react";
 import fullCountryList from "../lib/full_country_list_with_flags.json";
@@ -34,16 +34,24 @@ export default function SettingsPage() {
   const [groupedByContinent, setGroupedByContinent] = useState<Record<string, Country[]>>({});
   const [userId, setUserId] = useState<string | null>(null);
   const [searchTerm, setSearchTerm] = useState("");
+  const [darkModePref, setDarkModePref] = useState<boolean>(false);
+  const { colorMode, toggleColorMode } = useColorMode();
   const toast = useToast();
   const router = useRouter();
-  const { colorMode, toggleColorMode } = useColorMode();
 
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async (user) => {
       if (user) {
         setUserId(user.uid);
         const stored = await loadUserPreferences(user.uid);
-        if (stored) setSelected(stored);
+        if (stored?.favoriteCountries) setSelected(stored.favoriteCountries);
+        if (stored?.darkMode) {
+          setDarkModePref(true);
+          if (colorMode === "light") toggleColorMode();
+        } else {
+          setDarkModePref(false);
+          if (colorMode === "dark") toggleColorMode();
+        }
       }
     });
 
@@ -52,17 +60,21 @@ export default function SettingsPage() {
       acc[country.continent].push(country);
       return acc;
     }, {});
+
     for (const continent of Object.keys(grouped)) {
       grouped[continent].sort((a, b) => a.name.localeCompare(b.name));
     }
-    setGroupedByContinent(grouped);
 
+    setGroupedByContinent(grouped);
     return () => unsubscribe();
-  }, []);
+  }, [colorMode, toggleColorMode]);
 
   const handleSave = async () => {
     if (userId) {
-      await saveUserPreferences(userId, selected);
+      await saveUserPreferences(userId, {
+        favoriteCountries: selected,
+        darkMode: darkModePref,
+      });
       toast({
         title: "Preferences saved",
         status: "success",
@@ -78,23 +90,25 @@ export default function SettingsPage() {
   return (
     <Container maxW="container.xl" py={10}>
       <Heading size="lg" mb={4}>
-        Settings
+        Preferences
       </Heading>
+      <Text fontSize="sm" mb={6}>
+        Choose countries and appearance settings for WatchAtlas.
+      </Text>
 
       <FormControl display="flex" alignItems="center" mb={6}>
         <FormLabel htmlFor="dark-mode-toggle" mb="0">
-          Dark Mode
+          Enable Dark Mode
         </FormLabel>
         <Switch
           id="dark-mode-toggle"
-          isChecked={colorMode === "dark"}
-          onChange={toggleColorMode}
+          isChecked={darkModePref}
+          onChange={() => {
+            setDarkModePref(!darkModePref);
+            toggleColorMode();
+          }}
         />
       </FormControl>
-
-      <Text fontSize="sm" mb={6}>
-        Choose the countries where you want to see streaming availability.
-      </Text>
 
       <Input
         placeholder="Search countries..."
@@ -102,6 +116,7 @@ export default function SettingsPage() {
         onChange={(e) => setSearchTerm(e.target.value)}
         mb={6}
         bg="white"
+        _dark={{ bg: "gray.700", color: "white" }}
         maxW="400px"
       />
 
