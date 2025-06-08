@@ -193,8 +193,8 @@ export default function DetailsPage() {
                         mb={6}
                         borderWidth="1px"
                         borderRadius="lg"
-                        bg="white"
-                        borderColor="gray.300"
+                        bg={useColorModeValue("white", "gray.700")}
+                        borderColor={useColorModeValue("gray.300", "gray.600")}
                         boxShadow="md"
                       >
                         <Heading size="sm" mb={2}>
