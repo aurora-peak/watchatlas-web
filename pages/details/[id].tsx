@@ -26,21 +26,6 @@ import { onAuthStateChanged } from "firebase/auth";
 import { auth } from "../../lib/firebase";
 import { loadUserPreferences } from "../../lib/firestore";
 
-type Provider = {
-  provider_name: string;
-  logo_path: string;
-};
-
-type Availability = {
-  flatrate?: Provider[];
-  rent?: Provider[];
-  buy?: Provider[];
-};
-
-type CountryProviders = {
-  [countryCode: string]: Availability;
-};
-
 export default function DetailsPage() {
   const router = useRouter();
   const { id, type } = router.query;
@@ -57,7 +42,7 @@ export default function DetailsPage() {
   const [genres, setGenres] = useState<string[]>([]);
   const [homepage, setHomepage] = useState<string>("");
   const [tagline, setTagline] = useState("");
-  const [providers, setProviders] = useState<CountryProviders>({});
+  const [providers, setProviders] = useState<Record<string, any>>({});
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -65,7 +50,6 @@ export default function DetailsPage() {
       setUser(firebaseUser);
       if (firebaseUser) {
         const prefs = await loadUserPreferences(firebaseUser.uid);
-        console.log("✅ Firebase user detected:", firebaseUser.uid, prefs);
         setFavoriteCountries(prefs ?? []);
       }
     });
@@ -104,7 +88,7 @@ export default function DetailsPage() {
     fetchDetails();
   }, [id, type]);
 
-  const section = (label: string, data?: Provider[]) => {
+  const section = (label: string, data?: any[]) => {
     if (!data?.length) return null;
     return (
       <Flex align="center" pt={3}>
@@ -144,6 +128,14 @@ export default function DetailsPage() {
     ? getDisplayCountries(providers, favoriteCountries)
     : Object.keys(providers);
 
+  const groupedByContinent: Record<string, string[]> = {};
+  countriesToShow.forEach((code) => {
+    const meta = getCountryMeta(code);
+    const continent = meta?.continent || "Other";
+    if (!groupedByContinent[continent]) groupedByContinent[continent] = [];
+    groupedByContinent[continent].push(code);
+  });
+
   return (
     <Box position="relative" minH="100vh" w="100vw" overflowX="hidden" m={0} p={0}>
       {backdrop && (
@@ -166,59 +158,60 @@ export default function DetailsPage() {
           <Grid templateColumns={{ base: "1fr", md: "2fr 1fr" }} gap={8}>
             <Box overflowY="auto" maxH="80vh" pr={2}>
               <VStack align="start" spacing={6}>
-                {countriesToShow.length === 0 ? (
-                  <Text fontSize="sm" color="gray.100">
-                    Not available in any country.
-                  </Text>
-                ) : (
-                  countriesToShow.map((code: string) => {
-                    const countryData = providers[code];
-                    const countryMeta = getCountryMeta(code);
+                {Object.entries(groupedByContinent).map(([continent, codes]) => (
+                  <Box key={continent}>
+                    <Heading size="md" mb={4} color="gray.100">
+                      {continent}
+                    </Heading>
+                    {codes.map((code) => {
+                      const countryData = providers[code];
+                      const countryMeta = getCountryMeta(code);
 
-                    const sections = [];
-                    if (countryData?.flatrate?.length) {
-                      sections.push(section("Streaming", countryData.flatrate));
-                    }
-                    if (countryData?.rent?.length) {
-                      sections.push(section("Rent", countryData.rent));
-                    }
-                    if (countryData?.buy?.length) {
-                      sections.push(section("Buy", countryData.buy));
-                    }
+                      const sections = [];
+                      if (countryData?.flatrate?.length) {
+                        sections.push(section("Streaming", countryData.flatrate));
+                      }
+                      if (countryData?.rent?.length) {
+                        sections.push(section("Rent", countryData.rent));
+                      }
+                      if (countryData?.buy?.length) {
+                        sections.push(section("Buy", countryData.buy));
+                      }
 
-                    return (
-                      <Box
-                        key={code}
-                        p={5}
-                        mb={6}
-                        borderWidth="1px"
-                        borderRadius="lg"
-                        bg={useColorModeValue("white", "gray.700")}
-                        borderColor={useColorModeValue("gray.300", "gray.600")}
-                        boxShadow="md"
-                      >
-                        <Heading size="sm" mb={2}>
-                          {countryMeta?.flag} {countryMeta?.name || code}
-                        </Heading>
-                        <Divider mb={2} />
-                        {sections.length === 0 ? (
-                          <Text fontSize="sm" color="gray.500">
-                            No availability found.
-                          </Text>
-                        ) : (
-                          <Stack spacing={4}>
-                            {sections.map((sec, index) => (
-                              <Box key={index}>
-                                {index !== 0 && <Divider mb={2} />}
-                                {sec}
-                              </Box>
-                            ))}
-                          </Stack>
-                        )}
-                      </Box>
-                    );
-                  })
-                )}
+                      return (
+                        <Box
+                          key={code}
+                          p={5}
+                          mb={6}
+                          borderWidth="1px"
+                          borderRadius="lg"
+                          bg={useColorModeValue("white", "gray.700")}
+                          borderColor={useColorModeValue("gray.300", "gray.600")}
+                          boxShadow="md"
+                        >
+                          <Heading size="sm" mb={2}>
+                            {countryMeta?.flag} {countryMeta?.name || code}
+                          </Heading>
+                          <Divider mb={2} />
+                          {sections.length === 0 ? (
+                            <Text fontSize="sm" color="gray.500">
+                              No availability found.
+                            </Text>
+                          ) : (
+                            <Stack spacing={4}>
+                              {sections.map((sec, index) => (
+                                <Box key={index}>
+                                  {index !== 0 && <Divider mb={2} />}
+                                  {sec}
+                                </Box>
+                              ))}
+                            </Stack>
+                          )}
+                        </Box>
+                      );
+                    })}
+                  </Box>
+                ))}
               </VStack>
             </Box>
 
