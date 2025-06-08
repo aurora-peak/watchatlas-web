@@ -3,6 +3,8 @@ import {
     Flex,
     Heading,
     Input,
+    InputGroup,
+    InputRightElement,
     IconButton,
     useColorModeValue,
     useBreakpointValue,
@@ -12,8 +14,11 @@ import {
     MenuButton,
     MenuList,
     MenuItem,
+    useColorMode,
+    Tooltip,
+    VStack,
   } from "@chakra-ui/react";
-  import { SearchIcon } from "@chakra-ui/icons";
+  import { MoonIcon, SunIcon, SearchIcon } from "@chakra-ui/icons";
   import { useRouter } from "next/router";
   import { useEffect, useState } from "react";
   import Link from "next/link";
@@ -31,6 +36,7 @@ import {
     const [user, setUser] = useState<{ name: string; picture: string } | null>(null);
     const router = useRouter();
     const isMobile = useBreakpointValue({ base: true, md: false });
+    const { colorMode, toggleColorMode } = useColorMode();
   
     const handleSearch = () => {
       if (search.trim()) {
@@ -97,11 +103,11 @@ import {
       >
         <Flex
           direction={isMobile ? "column" : "row"}
-          align="center"
+          align={isMobile ? "stretch" : "center"}
           justify="space-between"
-          gap={isMobile ? 4 : 0}
+          gap={4}
         >
-          <HStack spacing={4} w={isMobile ? "100%" : "auto"} flex={1}>
+          <HStack spacing={4}>
             <Link href="/">
               <HStack spacing={2} align="center">
                 <Box boxSize="32px">
@@ -117,30 +123,41 @@ import {
                 </Heading>
               </HStack>
             </Link>
+          </HStack>
   
+          <InputGroup size="md" w="100%">
             <Input
               placeholder="Search for movies or shows..."
-              size="md"
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               onKeyDown={(e) => e.key === "Enter" && handleSearch()}
-              w={isMobile ? "100%" : "500px"}
               bg="white"
               borderColor="gray.300"
               borderWidth="1px"
               borderRadius="md"
               boxShadow="sm"
             />
+            <InputRightElement>
+              <IconButton
+                icon={<SearchIcon />}
+                aria-label="Search"
+                size="sm"
+                onClick={handleSearch}
+                variant="ghost"
+              />
+            </InputRightElement>
+          </InputGroup>
   
-            <IconButton
-              icon={<SearchIcon />}
-              aria-label="Search"
-              size="md"
-              onClick={handleSearch}
-            />
-          </HStack>
+          <VStack spacing={2} align={isMobile ? "stretch" : "end"}>
+            <Tooltip label="Toggle dark mode" hasArrow>
+              <IconButton
+                icon={colorMode === "light" ? <MoonIcon /> : <SunIcon />}
+                aria-label="Toggle color mode"
+                variant="ghost"
+                onClick={toggleColorMode}
+              />
+            </Tooltip>
   
-          <Box mt={isMobile ? 2 : 0}>
             {user ? (
               <Menu>
                 <MenuButton
@@ -165,9 +182,9 @@ import {
                 </MenuList>
               </Menu>
             ) : (
-              <div id="g_id_signin" />
+              <Box id="g_id_signin" />
             )}
-          </Box>
+          </VStack>
         </Flex>
       </Box>
     );
