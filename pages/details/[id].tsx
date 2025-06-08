@@ -21,6 +21,7 @@ import { ExternalLinkIcon } from "@chakra-ui/icons";
 import { getPosterUrl } from "../../lib/tmdb";
 import { getCountryMeta } from "../../lib/countries";
 import { getDisplayCountries } from "../../lib/getDisplayCountries";
+import { useColorModeValue } from "@chakra-ui/react";
 import { onAuthStateChanged } from "firebase/auth";
 import { auth } from "../../lib/firebase";
 import { loadUserPreferences } from "../../lib/firestore";
@@ -123,7 +124,12 @@ export default function DetailsPage() {
                   borderRadius="md"
                   boxShadow="sm"
                 />
-                <Badge fontSize="0.7em" textAlign="center">
+                <Badge
+                  fontSize="0.7em"
+                  textAlign="center"
+                  color={useColorModeValue("gray.800", "white")}
+                  bg="transparent"
+                >
                   {provider.provider_name}
                 </Badge>
               </VStack>
