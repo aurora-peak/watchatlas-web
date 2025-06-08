@@ -12,13 +12,15 @@ import {
   Button,
   Input,
   useToast,
+  FormControl,
+  FormLabel,
+  Switch,
+  useColorMode,
 } from "@chakra-ui/react";
 import fullCountryList from "../lib/full_country_list_with_flags.json";
 import { saveUserPreferences, loadUserPreferences } from "../lib/firestore";
 import { onAuthStateChanged } from "firebase/auth";
 import { auth } from "../lib/firebase";
-
-console.log("🌍 Loaded country list:", fullCountryList);
 
 type Country = {
   code: string;
@@ -34,34 +36,25 @@ export default function SettingsPage() {
   const [searchTerm, setSearchTerm] = useState("");
   const toast = useToast();
   const router = useRouter();
+  const { colorMode, toggleColorMode } = useColorMode();
 
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async (user) => {
       if (user) {
-        console.log("✅ Firebase user detected:", user.uid);
         setUserId(user.uid);
         const stored = await loadUserPreferences(user.uid);
         if (stored) setSelected(stored);
-      } else {
-        console.warn("⚠️ No Firebase user detected");
       }
     });
-
-    if (!Array.isArray(fullCountryList)) {
-      console.error("❌ Invalid country list:", fullCountryList);
-      return () => unsubscribe();
-    }
 
     const grouped = fullCountryList.reduce((acc: Record<string, Country[]>, country: Country) => {
       if (!acc[country.continent]) acc[country.continent] = [];
       acc[country.continent].push(country);
       return acc;
     }, {});
-
     for (const continent of Object.keys(grouped)) {
       grouped[continent].sort((a, b) => a.name.localeCompare(b.name));
     }
-
     setGroupedByContinent(grouped);
 
     return () => unsubscribe();
@@ -79,16 +72,26 @@ export default function SettingsPage() {
       setTimeout(() => {
         router.push("/");
       }, 2000);
-    } else {
-      console.warn("⚠️ Tried to save but no userId found.");
     }
   };
 
   return (
     <Container maxW="container.xl" py={10}>
       <Heading size="lg" mb={4}>
-        Select Favorite Countries
+        Settings
       </Heading>
+
+      <FormControl display="flex" alignItems="center" mb={6}>
+        <FormLabel htmlFor="dark-mode-toggle" mb="0">
+          Dark Mode
+        </FormLabel>
+        <Switch
+          id="dark-mode-toggle"
+          isChecked={colorMode === "dark"}
+          onChange={toggleColorMode}
+        />
+      </FormControl>
+
       <Text fontSize="sm" mb={6}>
         Choose the countries where you want to see streaming availability.
       </Text>
