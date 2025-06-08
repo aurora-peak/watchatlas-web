@@ -16,8 +16,8 @@ import {
     MenuItem,
     useColorMode,
 } from "@chakra-ui/react";
-import { MoonIcon, SunIcon, SearchIcon } from "@chakra-ui/icons";
 import { useRouter } from "next/router";
+import { SearchIcon } from "@chakra-ui/icons";
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { GoogleAuthProvider, signInWithCredential } from "firebase/auth";
@@ -146,12 +146,6 @@ export default function NavBar() {
 
                 {/* Right: Color mode toggle + user avatar */}
                 <HStack spacing={3} mt={{ base: 3, md: 0 }} alignSelf={{ base: "flex-end", md: "center" }}>
-                    <IconButton
-                        icon={colorMode === "light" ? <MoonIcon /> : <SunIcon />}
-                        aria-label="Toggle color mode"
-                        onClick={toggleColorMode}
-                        variant="ghost"
-                    />
                     {user ? (
                         <Menu>
                             <MenuButton
