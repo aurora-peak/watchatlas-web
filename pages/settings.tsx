@@ -1,3 +1,4 @@
+// pages/settings.tsx
 import { useEffect, useState } from "react";
 import { useRouter } from "next/router";
 import {
@@ -11,14 +12,17 @@ import {
   Text,
   Button,
   Input,
-  useToast,
   Switch,
-  FormControl,
-  FormLabel,
+  HStack,
+  useToast,
   useColorMode,
 } from "@chakra-ui/react";
 import fullCountryList from "../lib/full_country_list_with_flags.json";
-import { saveUserPreferences, loadUserPreferences } from "../lib/firestore";
+import {
+  saveUserPreferences,
+  loadUserPreferences,
+  UserPreferences,
+} from "../lib/firestore";
 import { onAuthStateChanged } from "firebase/auth";
 import { auth } from "../lib/firebase";
 
@@ -34,23 +38,21 @@ export default function SettingsPage() {
   const [groupedByContinent, setGroupedByContinent] = useState<Record<string, Country[]>>({});
   const [userId, setUserId] = useState<string | null>(null);
   const [searchTerm, setSearchTerm] = useState("");
-  const [darkModePref, setDarkModePref] = useState<boolean>(false);
-  const { colorMode, toggleColorMode } = useColorMode();
+  const [darkModePref, setDarkModePref] = useState(false);
+
   const toast = useToast();
   const router = useRouter();
+  const { colorMode, setColorMode } = useColorMode();
 
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async (user) => {
       if (user) {
         setUserId(user.uid);
-        const stored = await loadUserPreferences(user.uid);
-        if (stored?.favoriteCountries) setSelected(stored.favoriteCountries);
-        if (stored?.darkMode) {
-          setDarkModePref(true);
-          if (colorMode === "light") toggleColorMode();
-        } else {
-          setDarkModePref(false);
-          if (colorMode === "dark") toggleColorMode();
+        const prefs = await loadUserPreferences(user.uid);
+        if (prefs) {
+          setSelected(prefs.favoriteCountries ?? []);
+          setDarkModePref(prefs.darkMode ?? false);
+          setColorMode(prefs.darkMode ? "dark" : "light");
         }
       }
     });
@@ -66,8 +68,9 @@ export default function SettingsPage() {
     }
 
     setGroupedByContinent(grouped);
+
     return () => unsubscribe();
-  }, [colorMode, toggleColorMode]);
+  }, [setColorMode]);
 
   const handleSave = async () => {
     if (userId) {
@@ -84,31 +87,31 @@ export default function SettingsPage() {
       setTimeout(() => {
         router.push("/");
       }, 2000);
+    } else {
+      console.warn("⚠️ Tried to save but no userId found.");
     }
   };
 
   return (
     <Container maxW="container.xl" py={10}>
       <Heading size="lg" mb={4}>
-        Preferences
+        Select Favorite Countries
       </Heading>
       <Text fontSize="sm" mb={6}>
-        Choose countries and appearance settings for WatchAtlas.
+        Choose the countries where you want to see streaming availability.
       </Text>
 
-      <FormControl display="flex" alignItems="center" mb={6}>
-        <FormLabel htmlFor="dark-mode-toggle" mb="0">
-          Enable Dark Mode
-        </FormLabel>
+      <HStack mb={6}>
+        <Text>Dark Mode</Text>
         <Switch
-          id="dark-mode-toggle"
           isChecked={darkModePref}
-          onChange={() => {
-            setDarkModePref(!darkModePref);
-            toggleColorMode();
+          onChange={(e) => {
+            const enabled = e.target.checked;
+            setDarkModePref(enabled);
+            setColorMode(enabled ? "dark" : "light");
           }}
         />
-      </FormControl>
+      </HStack>
 
       <Input
         placeholder="Search countries..."
@@ -116,7 +119,6 @@ export default function SettingsPage() {
         onChange={(e) => setSearchTerm(e.target.value)}
         mb={6}
         bg="white"
-        _dark={{ bg: "gray.700", color: "white" }}
         maxW="400px"
       />
 
