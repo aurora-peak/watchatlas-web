@@ -15,8 +15,6 @@ import {
     MenuList,
     MenuItem,
     useColorMode,
-    Tooltip,
-    VStack,
   } from "@chakra-ui/react";
   import { MoonIcon, SunIcon, SearchIcon } from "@chakra-ui/icons";
   import { useRouter } from "next/router";
@@ -52,7 +50,7 @@ import {
       document.body.appendChild(script);
   
       script.onload = () => {
-        if (window.google) {
+        if (typeof window !== "undefined" && window.google) {
           window.google.accounts.id.initialize({
             client_id: process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID!,
             callback: async (response: any) => {
@@ -66,7 +64,6 @@ import {
                   picture: firebaseUser.photoURL || "",
                 };
   
-                console.log("✅ Signed in as:", userData.name);
                 setUser(userData);
                 localStorage.setItem("user", JSON.stringify(userData));
                 window.location.href = "/settings";
@@ -102,62 +99,57 @@ import {
         boxShadow="sm"
       >
         <Flex
-          direction={isMobile ? "column" : "row"}
-          align={isMobile ? "stretch" : "center"}
+          direction={{ base: "column", md: "row" }}
+          align={{ base: "start", md: "center" }}
           justify="space-between"
           gap={4}
+          pb={{ base: 3, md: 0 }}
         >
-          <HStack spacing={4}>
-            <Link href="/">
-              <HStack spacing={2} align="center">
-                <Box boxSize="32px">
-                  <img src="/logo.png" alt="WatchAtlas Logo" style={{ width: "100%", height: "auto" }} />
-                </Box>
-                <Heading
-                  size="md"
-                  cursor="pointer"
-                  whiteSpace="nowrap"
-                  fontFamily="'Cinzel', serif"
-                >
-                  WatchAtlas
-                </Heading>
-              </HStack>
-            </Link>
-          </HStack>
+          {/* Left: Logo + Search */}
+          <Box w="100%">
+            <HStack spacing={3}>
+              <Link href="/">
+                <HStack spacing={2}>
+                  <Box boxSize="32px">
+                    <img src="/logo.png" alt="WatchAtlas Logo" style={{ width: "100%", height: "auto" }} />
+                  </Box>
+                  <Heading size="md" fontFamily="'Cinzel', serif">
+                    WatchAtlas
+                  </Heading>
+                </HStack>
+              </Link>
+            </HStack>
   
-          <InputGroup size="md" w="100%">
-            <Input
-              placeholder="Search for movies or shows..."
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              onKeyDown={(e) => e.key === "Enter" && handleSearch()}
-              bg="white"
-              borderColor="gray.300"
-              borderWidth="1px"
-              borderRadius="md"
-              boxShadow="sm"
+            <InputGroup mt={{ base: 3, md: 0 }} w="100%">
+              <Input
+                placeholder="Search for movies or shows..."
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                onKeyDown={(e) => e.key === "Enter" && handleSearch()}
+                bg="white"
+                borderColor="gray.300"
+                w="100%"
+              />
+              <InputRightElement>
+                <IconButton
+                  icon={<SearchIcon />}
+                  aria-label="Search"
+                  size="sm"
+                  onClick={handleSearch}
+                  variant="ghost"
+                />
+              </InputRightElement>
+            </InputGroup>
+          </Box>
+  
+          {/* Right: Color mode toggle + user avatar */}
+          <HStack spacing={3} mt={{ base: 3, md: 0 }} alignSelf={{ base: "flex-end", md: "center" }}>
+            <IconButton
+              icon={colorMode === "light" ? <MoonIcon /> : <SunIcon />}
+              aria-label="Toggle color mode"
+              onClick={toggleColorMode}
+              variant="ghost"
             />
-            <InputRightElement>
-              <IconButton
-                icon={<SearchIcon />}
-                aria-label="Search"
-                size="sm"
-                onClick={handleSearch}
-                variant="ghost"
-              />
-            </InputRightElement>
-          </InputGroup>
-  
-          <VStack spacing={2} align={isMobile ? "stretch" : "end"}>
-            <Tooltip label="Toggle dark mode" hasArrow>
-              <IconButton
-                icon={colorMode === "light" ? <MoonIcon /> : <SunIcon />}
-                aria-label="Toggle color mode"
-                variant="ghost"
-                onClick={toggleColorMode}
-              />
-            </Tooltip>
-  
             {user ? (
               <Menu>
                 <MenuButton
@@ -184,7 +176,7 @@ import {
             ) : (
               <Box id="g_id_signin" />
             )}
-          </VStack>
+          </HStack>
         </Flex>
       </Box>
     );
