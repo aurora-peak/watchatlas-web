@@ -1,62 +1,55 @@
-import { Box, Text, IconButton, Flex } from "@chakra-ui/react";
-import { CloseIcon } from "@chakra-ui/icons";
-import { useState, useEffect } from "react";
-import NavBar from "./NavBar";
+import { useRouter } from "next/router";
+import { useTheme } from "next-themes";
+import { Home, Search, Settings } from "lucide-react";
 
 export default function AppLayout({ children }: { children: React.ReactNode }) {
-  const [user, setUser] = useState<any>(null);
-  const [dismissed, setDismissed] = useState(false);
+  const { resolvedTheme } = useTheme();
+  const router = useRouter();
 
-  useEffect(() => {
-    const storedUser = localStorage.getItem("user");
-    if (storedUser) {
-      setUser(JSON.parse(storedUser));
-    }
+  const navStyle: React.CSSProperties = {
+    position: "fixed",
+    bottom: 0,
+    left: 0,
+    right: 0,
+    padding: "12px 24px",
+    display: "flex",
+    justifyContent: "space-around",
+    borderTop: "1px solid",
+    backgroundColor: resolvedTheme === "dark" ? "#111" : "#fff",
+    color: resolvedTheme === "dark" ? "#fff" : "#000",
+    borderColor: resolvedTheme === "dark" ? "#333" : "#ddd",
+    zIndex: 1000,
+  };
 
-    const onStorageChange = () => {
-      const updatedUser = localStorage.getItem("user");
-      setUser(updatedUser ? JSON.parse(updatedUser) : null);
-    };
-
-    window.addEventListener("storage", onStorageChange);
-    return () => window.removeEventListener("storage", onStorageChange);
-  }, []);
+  const buttonStyle: React.CSSProperties = {
+    background: "none",
+    border: "none",
+    fontSize: 12,
+    display: "flex",
+    flexDirection: "column",
+    alignItems: "center",
+    cursor: "pointer",
+    color: resolvedTheme === "dark" ? "#ccc" : "#444",
+  };
 
   return (
-    <Box minH="100vh" position="relative" pb={!user && !dismissed ? "60px" : "0"}>
-      <NavBar />
+    <div className={`min-h-screen relative ${resolvedTheme === "dark" ? "bg-black text-white" : "bg-white text-black"}`}>
+      <main>{children}</main>
 
-      <Box>{children}</Box>
-
-      {!user && !dismissed && (
-        <Flex
-          position="fixed"
-          bottom="0"
-          left="0"
-          right="0"
-          zIndex="1000"
-          bg="rgba(0, 0, 0, 0.6)"
-          color="white"
-          px={6}
-          py={4}
-          align="center"
-          justify="center"
-          boxShadow="md"
-          backdropFilter="blur(8px)"
-        >
-          <Text fontSize="sm" mr={4}>
-            Sign in to save your favorite countries across devices.
-          </Text>
-          <IconButton
-            icon={<CloseIcon />}
-            aria-label="Dismiss"
-            size="sm"
-            onClick={() => setDismissed(true)}
-            variant="ghost"
-            colorScheme="whiteAlpha"
-          />
-        </Flex>
-      )}
-    </Box>
+      <nav style={navStyle}>
+        <button style={buttonStyle} onClick={() => router.push("/")}>          
+          <Home size={20} />
+          <span>Home</span>
+        </button>
+        <button style={buttonStyle} onClick={() => router.push("/search")}>          
+          <Search size={20} />
+          <span>Search</span>
+        </button>
+        <button style={buttonStyle} onClick={() => router.push("/settings")}>          
+          <Settings size={20} />
+          <span>Settings</span>
+        </button>
+      </nav>
+    </div>
   );
 }

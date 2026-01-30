@@ -7,10 +7,12 @@ export type TMDBResult = {
   media_type: "movie" | "tv";
   poster_path: string | null;
   popularity?: number;
+  release_date?: string;
+  first_air_date?: string;
 };
 
 export async function searchTMDBAll(query: string): Promise<TMDBResult[]> {
-  const apiKey = process.env.NEXT_PUBLIC_TMDB_API_KEY; // ✅ FIXED
+  const apiKey = process.env.NEXT_PUBLIC_TMDB_API_KEY;
   const encoded = encodeURIComponent(query);
 
   const tvUrl = `${API_BASE}/search/tv?api_key=${apiKey}&query=${encoded}`;
@@ -34,9 +36,9 @@ export async function searchTMDBAll(query: string): Promise<TMDBResult[]> {
     media_type: "movie",
   }));
 
-  const combined = [...tvResults, ...movieResults];
-
-  return combined.sort((a, b) => (b.popularity || 0) - (a.popularity || 0));
+  return [...tvResults, ...movieResults].sort(
+    (a, b) => (b.popularity || 0) - (a.popularity || 0)
+  );
 }
 
 export function getPosterUrl(path: string | null, size: string = "w500"): string {
@@ -56,8 +58,33 @@ export async function getTMDBCategoryResults(endpoint: string): Promise<TMDBResu
     id: item.id,
     name: item.name,
     title: item.title,
-    media_type: item.media_type || (endpoint.includes('movie') ? 'movie' : 'tv'),
+    media_type: item.media_type || (endpoint.includes("movie") ? "movie" : "tv"),
     poster_path: item.poster_path,
     popularity: item.popularity,
+    release_date: item.release_date,
+    first_air_date: item.first_air_date,
   }));
 }
+
+// ✅ These helper functions wrap the category API endpoints
+export async function getTrendingMovies(period: "day" | "week") {
+  return getTMDBCategoryResults(`trending/movie/${period}`);
+}
+
+export async function getTrendingTVShows(period: "day" | "week") {
+  return getTMDBCategoryResults(`trending/tv/${period}`);
+}
+
+export async function getPopularMovies() {
+  return getTMDBCategoryResults(`movie/popular`);
+}
+
+// ✅ Export as service object
+export const tmdbService = {
+  searchAll: searchTMDBAll,
+  getCategoryResults: getTMDBCategoryResults,
+  getPosterUrl,
+  getTrendingMovies,
+  getTrendingTVShows,
+  getPopularMovies,
+};

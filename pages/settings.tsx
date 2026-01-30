@@ -1,30 +1,23 @@
-// pages/settings.tsx
 import { useEffect, useState } from "react";
 import { useRouter } from "next/router";
-import {
-  Box,
-  Heading,
-  Checkbox,
-  CheckboxGroup,
-  SimpleGrid,
-  Container,
-  Stack,
-  Text,
-  Button,
-  Input,
-  Switch,
-  HStack,
-  useToast,
-  useColorMode,
-} from "@chakra-ui/react";
-import fullCountryList from "../lib/full_country_list_with_flags.json";
+import { onAuthStateChanged } from "firebase/auth";
+import { auth } from "@/lib/firebase";
+import fullCountryList from "@/lib/full_country_list_with_flags.json";
 import {
   saveUserPreferences,
   loadUserPreferences,
   UserPreferences,
-} from "../lib/firestore";
-import { onAuthStateChanged } from "firebase/auth";
-import { auth } from "../lib/firebase";
+} from "@/lib/firestore";
+
+import {
+  Button,
+  Card,
+  CardBody,
+  Checkbox,
+  Divider,
+  Input,
+  Switch,
+} from "@nextui-org/react";
 
 type Country = {
   code: string;
@@ -39,10 +32,7 @@ export default function SettingsPage() {
   const [userId, setUserId] = useState<string | null>(null);
   const [searchTerm, setSearchTerm] = useState("");
   const [darkModePref, setDarkModePref] = useState(false);
-
-  const toast = useToast();
   const router = useRouter();
-  const { colorMode, setColorMode } = useColorMode();
 
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async (user) => {
@@ -52,7 +42,7 @@ export default function SettingsPage() {
         if (prefs) {
           setSelected(prefs.favoriteCountries ?? []);
           setDarkModePref(prefs.darkMode ?? false);
-          setColorMode(prefs.darkMode ? "dark" : "light");
+          document.documentElement.classList.toggle("dark", prefs.darkMode ?? false);
         }
       }
     });
@@ -70,7 +60,12 @@ export default function SettingsPage() {
     setGroupedByContinent(grouped);
 
     return () => unsubscribe();
-  }, [setColorMode]);
+  }, []);
+
+  const toggleDarkMode = (enabled: boolean) => {
+    setDarkModePref(enabled);
+    document.documentElement.classList.toggle("dark", enabled);
+  };
 
   const handleSave = async () => {
     if (userId) {
@@ -78,86 +73,93 @@ export default function SettingsPage() {
         favoriteCountries: selected,
         darkMode: darkModePref,
       });
-      toast({
-        title: "Preferences saved",
-        status: "success",
-        duration: 2000,
-        isClosable: true,
-      });
+      alert("✅ Preferences saved");
       setTimeout(() => {
         router.push("/");
-      }, 2000);
-    } else {
-      console.warn("⚠️ Tried to save but no userId found.");
+      }, 1000);
     }
   };
 
   return (
-    <Container maxW="container.xl" py={10}>
-      <Heading size="lg" mb={4}>
-        Select Favorite Countries
-      </Heading>
-      <Text fontSize="sm" mb={6}>
+    <div style={{ maxWidth: "1200px", margin: "0 auto", padding: "2rem" }}>
+      <h1 style={{ fontSize: "1.5rem", fontWeight: "bold" }}>Select Favorite Countries</h1>
+      <p style={{ color: "#888", marginBottom: "1.5rem" }}>
         Choose the countries where you want to see streaming availability.
-      </Text>
+      </p>
 
-      <HStack mb={6}>
-        <Text>Dark Mode</Text>
+      <div style={{ marginBottom: "1.5rem" }}>
         <Switch
-          isChecked={darkModePref}
-          onChange={(e) => {
-            const enabled = e.target.checked;
-            setDarkModePref(enabled);
-            setColorMode(enabled ? "dark" : "light");
-          }}
-        />
-      </HStack>
+          isSelected={darkModePref}
+          onValueChange={toggleDarkMode}
+          color="primary"
+        >
+          Enable Dark Mode
+        </Switch>
+      </div>
 
       <Input
-        placeholder="Search countries..."
         value={searchTerm}
         onChange={(e) => setSearchTerm(e.target.value)}
-        mb={6}
-        bg="white"
-        maxW="400px"
+        label="Search countries..."
+        placeholder="e.g., Canada"
+        className="max-w-md mb-6"
+        variant="bordered"
       />
 
       {Object.keys(groupedByContinent).length === 0 ? (
-        <Text color="red.500">Failed to load country list.</Text>
+        <p style={{ color: "red" }}>Failed to load country list.</p>
       ) : (
-        <CheckboxGroup value={selected} onChange={(val) => setSelected(val as string[])}>
-          <SimpleGrid columns={{ base: 1, sm: 2, md: 3, lg: 6 }} spacing={6}>
-            {Object.entries(groupedByContinent).map(([continent, countries]) => {
-              const filtered = countries.filter((country) =>
-                country.name.toLowerCase().includes(searchTerm.toLowerCase())
-              );
-              if (filtered.length === 0) return null;
+        <div
+          style={{
+            display: "grid",
+            gridTemplateColumns: "repeat(auto-fill, minmax(250px, 1fr))",
+            gap: "1rem",
+          }}
+        >
+          {Object.entries(groupedByContinent).map(([continent, countries]) => {
+            const filtered = countries.filter((country) =>
+              country.name.toLowerCase().includes(searchTerm.toLowerCase())
+            );
+            if (filtered.length === 0) return null;
 
-              return (
-                <Box key={continent}>
-                  <Heading size="sm" mb={2}>{continent}</Heading>
-                  <Stack spacing={1}>
+            return (
+              <Card key={continent} shadow="sm">
+                <CardBody>
+                  <h2 style={{ fontSize: "1rem", fontWeight: "bold", marginBottom: "0.5rem" }}>
+                    {continent}
+                  </h2>
+                  <Divider />
+                  <div style={{ marginTop: "0.5rem" }}>
                     {filtered.map((country) => (
-                      <Checkbox key={country.code} value={country.code}>
+                      <Checkbox
+                        key={country.code}
+                        isSelected={selected.includes(country.code)}
+                        onValueChange={(checked) => {
+                          setSelected((prev) =>
+                            checked
+                              ? [...prev, country.code]
+                              : prev.filter((c) => c !== country.code)
+                          );
+                        }}
+                        size="sm"
+                        className="mb-1"
+                      >
                         {country.flag} {country.name}
                       </Checkbox>
                     ))}
-                  </Stack>
-                </Box>
-              );
-            })}
-          </SimpleGrid>
-        </CheckboxGroup>
+                  </div>
+                </CardBody>
+              </Card>
+            );
+          })}
+        </div>
       )}
 
-      <Button
-        colorScheme="blue"
-        mt={8}
-        onClick={handleSave}
-        isDisabled={!userId}
-      >
-        Save Preferences
-      </Button>
-    </Container>
+      <div style={{ marginTop: "2rem" }}>
+        <Button color="primary" onClick={handleSave} isDisabled={!userId}>
+          Save Preferences
+        </Button>
+      </div>
+    </div>
   );
 }

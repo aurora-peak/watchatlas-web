@@ -1,25 +1,7 @@
-import {
-    Box,
-    Flex,
-    Heading,
-    Input,
-    InputGroup,
-    InputRightElement,
-    IconButton,
-    useColorModeValue,
-    useBreakpointValue,
-    HStack,
-    Avatar,
-    Menu,
-    MenuButton,
-    MenuList,
-    MenuItem,
-    useColorMode,
-} from "@chakra-ui/react";
+"use client";
+
 import { useRouter } from "next/router";
-import { SearchIcon } from "@chakra-ui/icons";
 import { useEffect, useState } from "react";
-import Link from "next/link";
 import { GoogleAuthProvider, signInWithCredential } from "firebase/auth";
 import { auth } from "../lib/firebase";
 
@@ -29,18 +11,9 @@ declare global {
     }
 }
 
-export default function NavBar() {
-    const [search, setSearch] = useState("");
+export default function AuthInitializer() {
     const [user, setUser] = useState<{ name: string; picture: string } | null>(null);
     const router = useRouter();
-    const isMobile = useBreakpointValue({ base: true, md: false });
-    const { colorMode, toggleColorMode } = useColorMode();
-
-    const handleSearch = () => {
-        if (search.trim()) {
-            router.push(`/search?query=${encodeURIComponent(search)}`);
-        }
-    };
 
     useEffect(() => {
         const script = document.createElement("script");
@@ -50,7 +23,7 @@ export default function NavBar() {
         document.body.appendChild(script);
 
         script.onload = () => {
-            if (typeof window !== "undefined" && window.google) {
+            if (window.google) {
                 window.google.accounts.id.initialize({
                     client_id: process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID!,
                     callback: async (response: any) => {
@@ -75,7 +48,7 @@ export default function NavBar() {
 
                 window.google.accounts.id.renderButton(document.getElementById("g_id_signin"), {
                     theme: "outline",
-                    size: "large",
+                    size: "medium",
                 });
             }
         };
@@ -87,93 +60,48 @@ export default function NavBar() {
     }, []);
 
     return (
-        <Box
-            position="sticky"
-            top="0"
-            zIndex="1000"
-            bg={useColorModeValue("gray.100", "gray.800")}
-            px={4}
-            py={4}
-            mb={6}
-            borderBottomWidth="1px"
-            boxShadow="sm"
-        >
-            <Flex
-                direction={{ base: "column", md: "row" }}
-                align={{ base: "start", md: "center" }}
-                justify="space-between"
-                gap={4}
-                pb={{ base: 3, md: 0 }}
-            >
-                {/* Left: Logo + Search */}
-                <Box w="100%">
-                    <HStack spacing={3}>
-                        <Link href="/">
-                            <HStack spacing={2}>
-                                <Box boxSize="32px">
-                                    <img src="/logo.png" alt="WatchAtlas Logo" style={{ width: "100%", height: "auto" }} />
-                                </Box>
-                                <Heading size="md" fontFamily="'Cinzel', serif">
-                                    WatchAtlas
-                                </Heading>
-                            </HStack>
-                        </Link>
-                    </HStack>
-
-                    <InputGroup mt={{ base: 3, md: 0 }} w="100%">
-                        <Input
-                            placeholder="Search for movies or shows..."
-                            value={search}
-                            onChange={(e) => setSearch(e.target.value)}
-                            onKeyDown={(e) => e.key === "Enter" && handleSearch()}
-                            bg={useColorModeValue("white", "gray.700")}
-                            color={useColorModeValue("black", "white")}
-                            _placeholder={{ color: useColorModeValue("gray.500", "gray.400") }}
-                            borderColor="gray.300"
-                            w="100%"
-                        />
-                        <InputRightElement>
-                            <IconButton
-                                icon={<SearchIcon />}
-                                aria-label="Search"
-                                size="sm"
-                                onClick={handleSearch}
-                                variant="ghost"
-                            />
-                        </InputRightElement>
-                    </InputGroup>
-                </Box>
-
-                {/* Right: Color mode toggle + user avatar */}
-                <HStack spacing={3} mt={{ base: 3, md: 0 }} alignSelf={{ base: "flex-end", md: "center" }}>
-                    {user ? (
-                        <Menu>
-                            <MenuButton
-                                as={Avatar}
-                                name={user.name}
-                                src={user.picture}
-                                size="sm"
-                                cursor="pointer"
-                            />
-                            <MenuList>
-                                <MenuItem onClick={() => router.push("/settings")}>Settings</MenuItem>
-                                <MenuItem
-                                    onClick={() => {
-                                        localStorage.removeItem("user");
-                                        localStorage.removeItem("favoriteCountries");
-                                        setUser(null);
-                                        router.push("/");
-                                    }}
-                                >
-                                    Logout
-                                </MenuItem>
-                            </MenuList>
-                        </Menu>
-                    ) : (
-                        <Box id="g_id_signin" />
-                    )}
-                </HStack>
-            </Flex>
-        </Box>
+        <nav style={styles.navbar}>
+            <div style={styles.logo}>
+                <img src="/logo.png" alt="WatchAtlas Logo" width={72} height={72} />
+            </div>
+            <div style={styles.center}>
+                <h1 style={{ fontFamily: "Showtime, sans-serif" }} className="text-2xl font-bold">
+                    WatchAtlas
+                </h1>
+                <p style={styles.subheading}>Find where to watch your favorite content</p>
+            </div>
+            <div id="g_id_signin" style={styles.googleSignIn} />
+        </nav>
     );
 }
+
+const styles = {
+    navbar: {
+        display: "flex",
+        justifyContent: "space-between",
+        alignItems: "center",
+        padding: "10px 20px",
+        borderBottom: "1px solid #ccc",
+    },
+    logo: {
+        flex: "0 0 auto",
+    },
+    center: {
+        flex: "1 1 auto",
+        textAlign: "center" as "center",
+    },
+    heading: {
+        margin: 0,
+        fontSize: "1.5rem",
+    },
+    subheading: {
+        margin: 0,
+        fontSize: "1rem",
+        color: "#666",
+    },
+    googleSignIn: {
+        flex: "0 0 auto",
+        display: "inline-block",
+        maxWidth: 250,
+    },
+};

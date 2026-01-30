@@ -1,48 +1,40 @@
+// pages/details/[id].tsx
+
 import { useRouter } from "next/router";
 import { useEffect, useState } from "react";
-import {
-  Box,
-  Heading,
-  Spinner,
-  Text,
-  Image,
-  Badge,
-  VStack,
-  Flex,
-  Wrap,
-  WrapItem,
-  Stack,
-  Grid,
-  Divider,
-  HStack,
-  Link,
-} from "@chakra-ui/react";
-import { ExternalLinkIcon } from "@chakra-ui/icons";
-import { getPosterUrl } from "../../lib/tmdb";
-import { getCountryMeta } from "../../lib/countries";
-import { getDisplayCountries } from "../../lib/getDisplayCountries";
-import { useColorModeValue } from "@chakra-ui/react";
 import { onAuthStateChanged } from "firebase/auth";
-import { auth } from "../../lib/firebase";
-import { loadUserPreferences } from "../../lib/firestore";
+import { auth } from "@/lib/firebase";
+import { loadUserPreferences } from "@/lib/firestore";
+import { getPosterUrl } from "@/lib/tmdb";
+import { getCountryMeta } from "@/lib/countries";
+import { getDisplayCountries } from "@/lib/getDisplayCountries";
+import {
+  Card,
+  CardHeader,
+  CardBody,
+  Divider,
+  Image,
+  Link,
+  Spinner,
+  Chip
+} from "@nextui-org/react";
 
 export default function DetailsPage() {
   const router = useRouter();
   const { id, type } = router.query;
 
-  const [user, setUser] = useState<any>(null);
-  const [favoriteCountries, setFavoriteCountries] = useState<string[] | null>(null);
-
+  const [user, setUser] = useState(null);
+  const [favoriteCountries, setFavoriteCountries] = useState(null);
   const [title, setTitle] = useState("");
-  const [poster, setPoster] = useState<string | null>(null);
-  const [backdrop, setBackdrop] = useState<string | null>(null);
+  const [poster, setPoster] = useState(null);
+  const [backdrop, setBackdrop] = useState(null);
   const [overview, setOverview] = useState("");
   const [releaseDate, setReleaseDate] = useState("");
-  const [rating, setRating] = useState<number | null>(null);
-  const [genres, setGenres] = useState<string[]>([]);
-  const [homepage, setHomepage] = useState<string>("");
+  const [rating, setRating] = useState(null);
+  const [genres, setGenres] = useState([]);
+  const [homepage, setHomepage] = useState("");
   const [tagline, setTagline] = useState("");
-  const [providers, setProviders] = useState<Record<string, any>>({});
+  const [providers, setProviders] = useState({});
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -60,26 +52,23 @@ export default function DetailsPage() {
     if (!id || !type) return;
 
     const apiKey = process.env.NEXT_PUBLIC_TMDB_API_KEY;
+
     const fetchDetails = async () => {
       setLoading(true);
-
-      const metaRes = await fetch(
-        `https://api.themoviedb.org/3/${type}/${id}?api_key=${apiKey}`
-      );
+      const metaRes = await fetch(`https://api.themoviedb.org/3/${type}/${id}?api_key=${apiKey}`);
       const meta = await metaRes.json();
+
       setTitle(meta.name || meta.title || "Untitled");
       setPoster(meta.poster_path);
       setBackdrop(meta.backdrop_path);
       setOverview(meta.overview || "");
       setReleaseDate(meta.first_air_date || meta.release_date || "");
       setRating(meta.vote_average || null);
-      setGenres(meta.genres?.map((g: any) => g.name) || []);
+      setGenres(meta.genres?.map((g) => g.name) || []);
       setHomepage(meta.homepage || "");
       setTagline(meta.tagline || "");
 
-      const provRes = await fetch(
-        `https://api.themoviedb.org/3/${type}/${id}/watch/providers?api_key=${apiKey}`
-      );
+      const provRes = await fetch(`https://api.themoviedb.org/3/${type}/${id}/watch/providers?api_key=${apiKey}`);
       const provData = await provRes.json();
       setProviders(provData.results || {});
       setLoading(false);
@@ -87,42 +76,6 @@ export default function DetailsPage() {
 
     fetchDetails();
   }, [id, type]);
-
-  const section = (label: string, data?: any[]) => {
-    if (!data?.length) return null;
-    return (
-      <Flex align="center" pt={3}>
-        <Box minW="100px" textAlign="right" pr={4}>
-          <Text fontWeight="bold" fontSize="sm">
-            {label.toUpperCase()}
-          </Text>
-        </Box>
-        <Wrap spacing={4}>
-          {data.map((provider) => (
-            <WrapItem key={provider.provider_name}>
-              <VStack spacing={1}>
-                <Image
-                  src={getPosterUrl(provider.logo_path, "w92")}
-                  alt={provider.provider_name}
-                  boxSize="50px"
-                  borderRadius="md"
-                  boxShadow="sm"
-                />
-                <Badge
-                  fontSize="0.7em"
-                  textAlign="center"
-                  color={useColorModeValue("gray.800", "white")}
-                  bg="transparent"
-                >
-                  {provider.provider_name}
-                </Badge>
-              </VStack>
-            </WrapItem>
-          ))}
-        </Wrap>
-      </Flex>
-    );
-  };
 
   const countriesToShow = favoriteCountries
     ? getDisplayCountries(providers, favoriteCountries)
@@ -137,136 +90,104 @@ export default function DetailsPage() {
   });
 
   return (
-    <Box position="relative" minH="100vh" w="100vw" overflowX="hidden" m={0} p={0}>
+    <div className="relative min-h-screen w-full overflow-x-hidden">
       {backdrop && (
-        <Box position="fixed" top={0} left={0} right={0} bottom={0} zIndex={-2}>
-          <Box
-            bgImage={`url(${getPosterUrl(backdrop, "w1280")})`}
-            bgSize="cover"
-            bgPosition="center"
-            filter="blur(6px) brightness(0.4)"
-            height="100%"
-            width="100%"
-          />
-        </Box>
+        <div
+          className="fixed inset-0 -z-10 bg-cover bg-center blur-sm brightness-50"
+          style={{ backgroundImage: `url(${getPosterUrl(backdrop, "w1280")})` }}
+        />
       )}
 
-      <Box px={{ base: 4, md: 8 }} pt={8}>
+      <div className="px-4 md:px-8 pt-8 text-white">
         {loading ? (
-          <Spinner />
+          <div className="text-center">
+            <Spinner size="lg" label="Loading..." color="default" />
+          </div>
         ) : (
-          <Grid templateColumns={{ base: "1fr", md: "2fr 1fr" }} gap={8}>
-            <Box overflowY="auto" maxH="80vh" pr={2}>
-              <VStack align="start" spacing={6}>
-                {Object.entries(groupedByContinent).map(([continent, codes]) => (
-                  <Box key={continent}>
-                    <Heading size="md" mb={4} color="gray.100">
-                      {continent}
-                    </Heading>
-                    {codes.map((code) => {
-                      const countryData = providers[code];
-                      const countryMeta = getCountryMeta(code);
-
-                      const sections = [];
-                      if (countryData?.flatrate?.length) {
-                        sections.push(section("Streaming", countryData.flatrate));
-                      }
-                      if (countryData?.rent?.length) {
-                        sections.push(section("Rent", countryData.rent));
-                      }
-                      if (countryData?.buy?.length) {
-                        sections.push(section("Buy", countryData.buy));
-                      }
-
-                      return (
-                        <Box
-                          key={code}
-                          p={5}
-                          mb={6}
-                          borderWidth="1px"
-                          borderRadius="lg"
-                          bg={useColorModeValue("white", "gray.700")}
-                          borderColor={useColorModeValue("gray.300", "gray.600")}
-                          boxShadow="md"
-                        >
-                          <Heading size="sm" mb={2}>
-                            {countryMeta?.flag} {countryMeta?.name || code}
-                          </Heading>
-                          <Divider mb={2} />
-                          {sections.length === 0 ? (
-                            <Text fontSize="sm" color="gray.500">
-                              No availability found.
-                            </Text>
+          <div className="grid md:grid-cols-3 gap-8">
+            <div className="md:col-span-2 space-y-8 overflow-y-auto max-h-[80vh] pr-2">
+              {Object.entries(groupedByContinent).map(([continent, codes]) => (
+                <div key={continent}>
+                  <h2 className="text-lg font-semibold mb-4">{continent}</h2>
+                  {codes.map((code) => {
+                    const countryData = providers[code];
+                    const countryMeta = getCountryMeta(code);
+                    return (
+                      <Card key={code} className="mb-6">
+                        <CardHeader className="text-md font-semibold">
+                          {countryMeta?.flag} {countryMeta?.name || code}
+                        </CardHeader>
+                        <Divider />
+                        <CardBody>
+                          {!(countryData?.flatrate?.length || countryData?.rent?.length || countryData?.buy?.length) ? (
+                            <p className="text-sm text-default-500">No availability found.</p>
                           ) : (
-                            <Stack spacing={4}>
-                              {sections.map((sec, index) => (
-                                <Box key={index}>
-                                  {index !== 0 && <Divider mb={2} />}
-                                  {sec}
-                                </Box>
-                              ))}
-                            </Stack>
+                            <div className="space-y-4">
+                              {["flatrate", "rent", "buy"].map((type) =>
+                                countryData[type]?.length ? (
+                                  <div key={type}>
+                                    <h4 className="text-sm font-bold mb-2 uppercase">{type}</h4>
+                                    <div className="flex flex-wrap gap-4">
+                                      {countryData[type].map((provider) => (
+                                        <div key={provider.provider_name} className="flex flex-col items-center">
+                                          <Image
+                                            src={getPosterUrl(provider.logo_path, "w92")}
+                                            alt={provider.provider_name}
+                                            width={48}
+                                            height={48}
+                                            className="rounded-md shadow"
+                                          />
+                                          <span className="text-xs text-center mt-1">
+                                            {provider.provider_name}
+                                          </span>
+                                        </div>
+                                      ))}
+                                    </div>
+                                  </div>
+                                ) : null
+                              )}
+                            </div>
                           )}
-                        </Box>
-                      );
-                    })}
-                  </Box>
-                ))}
-              </VStack>
-            </Box>
+                        </CardBody>
+                      </Card>
+                    );
+                  })}
+                </div>
+              ))}
+            </div>
 
-            <Box position="sticky" top="80px" alignSelf="start" color="white">
-              <VStack align="start" spacing={4}>
-                {poster && (
-                  <Image
-                    src={getPosterUrl(poster)}
-                    alt={title}
-                    borderRadius="md"
-                    w="100%"
-                    maxW="200px"
-                    boxShadow="lg"
-                  />
-                )}
-                <Heading size="lg">{title}</Heading>
-                {tagline && (
-                  <Text fontStyle="italic" color="gray.300">
-                    {tagline}
-                  </Text>
-                )}
-                {releaseDate && (
-                  <Text fontSize="sm" color="gray.300">
-                    Release Date: {releaseDate}
-                  </Text>
-                )}
-                {rating !== null && (
-                  <Text fontSize="sm" color="gray.300">
-                    Rating: {rating}/10
-                  </Text>
-                )}
-                {genres.length > 0 && (
-                  <HStack spacing={2} wrap="wrap">
-                    {genres.map((genre) => (
-                      <Badge key={genre} colorScheme="purple">
-                        {genre}
-                      </Badge>
-                    ))}
-                  </HStack>
-                )}
-                {overview && (
-                  <Text fontSize="sm" color="gray.100">
-                    {overview}
-                  </Text>
-                )}
-                {homepage && (
-                  <Link href={homepage} isExternal color="blue.300">
-                    Official Website <ExternalLinkIcon mx="2px" />
-                  </Link>
-                )}
-              </VStack>
-            </Box>
-          </Grid>
+            <div className="sticky top-20 space-y-4">
+              {poster && (
+                <Image
+                  src={getPosterUrl(poster)}
+                  alt={title}
+                  width={200}
+                  className="rounded-md shadow-lg"
+                />
+              )}
+              <h1 className="text-2xl font-bold">{title}</h1>
+              {tagline && <p className="italic text-default-500">{tagline}</p>}
+              {releaseDate && <p className="text-sm text-default-500">Release Date: {releaseDate}</p>}
+              {rating !== null && <p className="text-sm text-default-500">Rating: {rating}/10</p>}
+              {genres.length > 0 && (
+                <div className="flex flex-wrap gap-2">
+                  {genres.map((genre) => (
+                    <Chip key={genre} size="sm" color="secondary">
+                      {genre}
+                    </Chip>
+                  ))}
+                </div>
+              )}
+              {overview && <p className="text-sm text-default-400">{overview}</p>}
+              {homepage && (
+                <Link href={homepage} isExternal showAnchorIcon className="text-sm">
+                  Official Website
+                </Link>
+              )}
+            </div>
+          </div>
         )}
-      </Box>
-    </Box>
+      </div>
+    </div>
   );
 }

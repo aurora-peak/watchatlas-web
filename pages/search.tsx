@@ -1,16 +1,9 @@
 import { useRouter } from "next/router";
 import { useEffect, useState } from "react";
-import {
-  Box,
-  Container,
-  Heading,
-  Spinner,
-  Text,
-  Grid,
-} from "@chakra-ui/react";
-import { searchTMDBAll, TMDBResult } from "../lib/tmdb";
-import ShowCard from "../components/ShowCard";
-import NextLink from "next/link";
+import Link from "next/link";
+import { searchTMDBAll, TMDBResult } from "@/lib/tmdb";
+import { Spinner, Card, CardBody } from "@nextui-org/react";
+import ShowCard from "@/components/ShowCard"; // Make sure this is also Tailwind-free or migrate it
 
 export default function SearchPage() {
   const router = useRouter();
@@ -32,27 +25,46 @@ export default function SearchPage() {
   }, [query]);
 
   return (
-    <Container maxW="container.lg" py={8}>
-      <Heading mb={4}>Search Results</Heading>
-      <Text mb={6}>
-        Showing results for <strong>{query}</strong> in <strong>{country}</strong>
-      </Text>
+    <div style={{ maxWidth: "1280px", margin: "0 auto", padding: "2rem" }}>
+      <h1 style={{ fontSize: "1.75rem", fontWeight: "bold", marginBottom: "1rem" }}>
+        Search Results
+      </h1>
+      <p style={{ color: "#888", marginBottom: "1.5rem" }}>
+        Showing results for <strong>{query}</strong>{" "}
+        {country && (
+          <>
+            in <strong>{country}</strong>
+          </>
+        )}
+      </p>
 
       {loading ? (
-        <Spinner size="xl" />
+        <div style={{ display: "flex", justifyContent: "center", height: "160px" }}>
+          <Spinner color="primary" />
+        </div>
       ) : results && results.length > 0 ? (
-        <Grid templateColumns="repeat(auto-fill, minmax(150px, 1fr))" gap={6}>
+        <div
+          style={{
+            display: "grid",
+            gridTemplateColumns: "repeat(auto-fill, minmax(150px, 1fr))",
+            gap: "1rem",
+          }}
+        >
           {results.map((r) => (
-            <NextLink key={r.id} href={`/details/${r.id}?type=${r.media_type}`} passHref>
-              <Box as="a">
-                <ShowCard result={r} />
-              </Box>
-            </NextLink>
+            <Link key={r.id} href={`/details/${r.id}?type=${r.media_type}`} passHref>
+              <a>
+                <Card isPressable>
+                  <CardBody className="p-0">
+                    <ShowCard result={r} />
+                  </CardBody>
+                </Card>
+              </a>
+            </Link>
           ))}
-        </Grid>
+        </div>
       ) : (
-        <Text>No results found.</Text>
+        <p style={{ color: "#aaa" }}>No results found.</p>
       )}
-    </Container>
+    </div>
   );
 }

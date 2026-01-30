@@ -1,17 +1,18 @@
 // pages/_app.tsx
-import { ChakraProvider } from "@chakra-ui/react";
+import { NextUIProvider } from "@nextui-org/react";
+import AppLayout from "@/components/AppLayout";
+import { ThemeProvider as NextThemesProvider } from "next-themes";
+import "@/styles/globals.css";
 import type { AppProps } from "next/app";
-import AppLayout from "../components/AppLayout";
-import theme from "../theme";
 
-function MyApp({ Component, pageProps }: AppProps) {
+export default function App({ Component, pageProps }: AppProps) {
   return (
-    <ChakraProvider theme={theme}>
-      <AppLayout>
-        <Component {...pageProps} />
-      </AppLayout>
-    </ChakraProvider>
+    <NextThemesProvider attribute="class" defaultTheme="system">
+      <NextUIProvider>
+        <AppLayout>
+          <Component {...pageProps} />
+        </AppLayout>
+      </NextUIProvider>
+    </NextThemesProvider>
   );
 }
-
-export default MyApp;

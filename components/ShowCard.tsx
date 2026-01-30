@@ -1,29 +1,49 @@
-import { VStack, Image, Text, LinkBox, LinkOverlay } from "@chakra-ui/react";
-import { TMDBResult, getPosterUrl } from "../lib/tmdb";
-import NextLink from "next/link";
+"use client";
+
+import Link from "next/link";
+import Image from "next/image";
+import { TMDBResult, getPosterUrl } from "@/lib/tmdb";
 
 type Props = {
   result: TMDBResult;
 };
 
 export default function ShowCard({ result }: Props) {
+  const title = result.name || result.title || "Untitled";
+
   return (
-    <LinkBox as="article" maxW="150px">
-      <VStack spacing={2} align="start">
-        <Image
-          src={getPosterUrl(result.poster_path)}
-          alt={result.name || result.title || "Untitled"}
-          borderRadius="md"
-          w="150px"
-          h="225px"
-          objectFit="cover"
-        />
-        <LinkOverlay as={NextLink} href={`/details/${result.id}?type=${result.media_type}`}>
-          <Text fontSize="sm" fontWeight="medium" noOfLines={2}>
-            {result.name || result.title}
-          </Text>
-        </LinkOverlay>
-      </VStack>
-    </LinkBox>
+    <div
+      style={{
+        width: 150,
+        flexShrink: 0,
+        display: "flex",
+        flexDirection: "column",
+        borderRadius: 8,
+        overflow: "hidden",
+        backgroundColor: "#111",
+        transition: "transform 0.2s",
+      }}
+      className="hover:scale-105"
+    >
+      <Link href={`/details/${result.id}?type=${result.media_type}`}>
+        <div style={{ width: 150, height: 225, overflow: "hidden" }}>
+          <Image
+            src={getPosterUrl(result.poster_path)}
+            alt={title}
+            width={150}
+            height={225}
+            style={{
+              objectFit: "cover",
+              display: "block",
+              width: "100%",
+              height: "100%",
+            }}
+          />
+        </div>
+      </Link>
+      <div style={{ padding: "8px 10px" }}>
+        <p style={{ fontSize: 14, fontWeight: 500, color: "#fff" }}>{title}</p>
+      </div>
+    </div>
   );
 }
