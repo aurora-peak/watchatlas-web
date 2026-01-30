@@ -1,9 +1,8 @@
 import { useEffect, useState } from "react";
 import { tmdbService, TMDBResult } from "@/lib/tmdb";
 import ShowCard from "@/components/ShowCard";
-import Image from "next/image";
-import { BarChart2, TrendingUp } from "lucide-react";
-import AuthInitializer from "@/components/NavBar";
+import { TrendingUp } from "lucide-react";
+import NavBar from "@/components/NavBar";
 
 export default function LandingPage() {
   const [trendingTV, setTrendingTV] = useState<TMDBResult[]>([]);
@@ -77,7 +76,7 @@ export default function LandingPage() {
 
         {/* Right: Google Sign-In */}
         <div className="flex justify-end items-center w-[120px]">
-          <AuthInitializer />
+          <NavBar />
         </div>
       </div>
 

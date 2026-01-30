@@ -2,9 +2,7 @@
 
 import { useRouter } from "next/router";
 import { useEffect, useState } from "react";
-import { onAuthStateChanged } from "firebase/auth";
-import { auth } from "@/lib/firebase";
-import { loadUserPreferences } from "@/lib/firestore";
+import { useAuth } from "@/lib/AuthContext";
 import { getPosterUrl } from "@/lib/tmdb";
 import { getCountryMeta } from "@/lib/countries";
 import { getDisplayCountries } from "@/lib/getDisplayCountries";
@@ -22,31 +20,21 @@ import {
 export default function DetailsPage() {
   const router = useRouter();
   const { id, type } = router.query;
+  const { preferences } = useAuth();
 
-  const [user, setUser] = useState(null);
-  const [favoriteCountries, setFavoriteCountries] = useState(null);
   const [title, setTitle] = useState("");
-  const [poster, setPoster] = useState(null);
-  const [backdrop, setBackdrop] = useState(null);
+  const [poster, setPoster] = useState<string | null>(null);
+  const [backdrop, setBackdrop] = useState<string | null>(null);
   const [overview, setOverview] = useState("");
   const [releaseDate, setReleaseDate] = useState("");
-  const [rating, setRating] = useState(null);
-  const [genres, setGenres] = useState([]);
+  const [rating, setRating] = useState<number | null>(null);
+  const [genres, setGenres] = useState<string[]>([]);
   const [homepage, setHomepage] = useState("");
   const [tagline, setTagline] = useState("");
-  const [providers, setProviders] = useState({});
+  const [providers, setProviders] = useState<Record<string, any>>({});
   const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
-      setUser(firebaseUser);
-      if (firebaseUser) {
-        const prefs = await loadUserPreferences(firebaseUser.uid);
-        setFavoriteCountries(prefs?.favoriteCountries ?? []);
-      }
-    });
-    return () => unsubscribe();
-  }, []);
+  const favoriteCountries = preferences?.favoriteCountries ?? null;
 
   useEffect(() => {
     if (!id || !type) return;

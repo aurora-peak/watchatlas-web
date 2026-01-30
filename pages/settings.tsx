@@ -1,13 +1,7 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/router";
-import { onAuthStateChanged } from "firebase/auth";
-import { auth } from "@/lib/firebase";
+import { useAuth } from "@/lib/AuthContext";
 import fullCountryList from "@/lib/full_country_list_with_flags.json";
-import {
-  saveUserPreferences,
-  loadUserPreferences,
-  UserPreferences,
-} from "@/lib/firestore";
 
 import {
   Button,
@@ -27,26 +21,23 @@ type Country = {
 };
 
 export default function SettingsPage() {
+  const { user, preferences, updatePreferences } = useAuth();
   const [selected, setSelected] = useState<string[]>([]);
   const [groupedByContinent, setGroupedByContinent] = useState<Record<string, Country[]>>({});
-  const [userId, setUserId] = useState<string | null>(null);
   const [searchTerm, setSearchTerm] = useState("");
   const [darkModePref, setDarkModePref] = useState(false);
   const router = useRouter();
 
+  // Initialize from preferences when they load
   useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, async (user) => {
-      if (user) {
-        setUserId(user.uid);
-        const prefs = await loadUserPreferences(user.uid);
-        if (prefs) {
-          setSelected(prefs.favoriteCountries ?? []);
-          setDarkModePref(prefs.darkMode ?? false);
-          document.documentElement.classList.toggle("dark", prefs.darkMode ?? false);
-        }
-      }
-    });
+    if (preferences) {
+      setSelected(preferences.favoriteCountries ?? []);
+      setDarkModePref(preferences.darkMode ?? false);
+    }
+  }, [preferences]);
 
+  // Group countries by continent
+  useEffect(() => {
     const grouped = fullCountryList.reduce((acc: Record<string, Country[]>, country: Country) => {
       if (!acc[country.continent]) acc[country.continent] = [];
       acc[country.continent].push(country);
@@ -58,8 +49,6 @@ export default function SettingsPage() {
     }
 
     setGroupedByContinent(grouped);
-
-    return () => unsubscribe();
   }, []);
 
   const toggleDarkMode = (enabled: boolean) => {
@@ -68,12 +57,12 @@ export default function SettingsPage() {
   };
 
   const handleSave = async () => {
-    if (userId) {
-      await saveUserPreferences(userId, {
+    if (user) {
+      await updatePreferences({
         favoriteCountries: selected,
         darkMode: darkModePref,
       });
-      alert("✅ Preferences saved");
+      alert("Preferences saved");
       setTimeout(() => {
         router.push("/");
       }, 1000);
@@ -156,7 +145,7 @@ export default function SettingsPage() {
       )}
 
       <div style={{ marginTop: "2rem" }}>
-        <Button color="primary" onClick={handleSave} isDisabled={!userId}>
+        <Button color="primary" onPress={handleSave} isDisabled={!user}>
           Save Preferences
         </Button>
       </div>
