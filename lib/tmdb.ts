@@ -1,5 +1,3 @@
-const API_BASE = "https://api.themoviedb.org/3";
-
 export type TMDBResult = {
   id: number;
   name?: string;
@@ -12,33 +10,16 @@ export type TMDBResult = {
 };
 
 export async function searchTMDBAll(query: string): Promise<TMDBResult[]> {
-  const apiKey = process.env.NEXT_PUBLIC_TMDB_API_KEY;
   const encoded = encodeURIComponent(query);
+  const response = await fetch(`/api/tmdb/search?query=${encoded}`);
 
-  const tvUrl = `${API_BASE}/search/tv?api_key=${apiKey}&query=${encoded}`;
-  const movieUrl = `${API_BASE}/search/movie?api_key=${apiKey}&query=${encoded}`;
+  if (!response.ok) {
+    console.error("Search API error:", response.status);
+    return [];
+  }
 
-  const [tvRes, movieRes] = await Promise.all([
-    fetch(tvUrl),
-    fetch(movieUrl),
-  ]);
-
-  const tvData = await tvRes.json();
-  const movieData = await movieRes.json();
-
-  const tvResults = (tvData.results || []).map((item: any) => ({
-    ...item,
-    media_type: "tv",
-  }));
-
-  const movieResults = (movieData.results || []).map((item: any) => ({
-    ...item,
-    media_type: "movie",
-  }));
-
-  return [...tvResults, ...movieResults].sort(
-    (a, b) => (b.popularity || 0) - (a.popularity || 0)
-  );
+  const data = await response.json();
+  return data.results || [];
 }
 
 export function getPosterUrl(path: string | null, size: string = "w500"): string {
@@ -47,42 +28,44 @@ export function getPosterUrl(path: string | null, size: string = "w500"): string
     : "/placeholder.png";
 }
 
-export async function getTMDBCategoryResults(endpoint: string): Promise<TMDBResult[]> {
-  const apiKey = process.env.NEXT_PUBLIC_TMDB_API_KEY;
-  const url = `${API_BASE}/${endpoint}?api_key=${apiKey}`;
+export async function getTrendingMovies(period: "day" | "week"): Promise<TMDBResult[]> {
+  const response = await fetch(`/api/tmdb/trending?type=movie&period=${period}`);
 
-  const res = await fetch(url);
-  const data = await res.json();
+  if (!response.ok) {
+    console.error("Trending movies API error:", response.status);
+    return [];
+  }
 
-  return (data.results || []).map((item: any) => ({
-    id: item.id,
-    name: item.name,
-    title: item.title,
-    media_type: item.media_type || (endpoint.includes("movie") ? "movie" : "tv"),
-    poster_path: item.poster_path,
-    popularity: item.popularity,
-    release_date: item.release_date,
-    first_air_date: item.first_air_date,
-  }));
+  const data = await response.json();
+  return data.results || [];
 }
 
-// ✅ These helper functions wrap the category API endpoints
-export async function getTrendingMovies(period: "day" | "week") {
-  return getTMDBCategoryResults(`trending/movie/${period}`);
+export async function getTrendingTVShows(period: "day" | "week"): Promise<TMDBResult[]> {
+  const response = await fetch(`/api/tmdb/trending?type=tv&period=${period}`);
+
+  if (!response.ok) {
+    console.error("Trending TV API error:", response.status);
+    return [];
+  }
+
+  const data = await response.json();
+  return data.results || [];
 }
 
-export async function getTrendingTVShows(period: "day" | "week") {
-  return getTMDBCategoryResults(`trending/tv/${period}`);
+export async function getPopularMovies(): Promise<TMDBResult[]> {
+  const response = await fetch(`/api/tmdb/popular?type=movie`);
+
+  if (!response.ok) {
+    console.error("Popular movies API error:", response.status);
+    return [];
+  }
+
+  const data = await response.json();
+  return data.results || [];
 }
 
-export async function getPopularMovies() {
-  return getTMDBCategoryResults(`movie/popular`);
-}
-
-// ✅ Export as service object
 export const tmdbService = {
   searchAll: searchTMDBAll,
-  getCategoryResults: getTMDBCategoryResults,
   getPosterUrl,
   getTrendingMovies,
   getTrendingTVShows,

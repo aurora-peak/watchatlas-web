@@ -39,26 +39,33 @@ export default function DetailsPage() {
   useEffect(() => {
     if (!id || !type) return;
 
-    const apiKey = process.env.NEXT_PUBLIC_TMDB_API_KEY;
-
     const fetchDetails = async () => {
       setLoading(true);
-      const metaRes = await fetch(`https://api.themoviedb.org/3/${type}/${id}?api_key=${apiKey}`);
-      const meta = await metaRes.json();
 
-      setTitle(meta.name || meta.title || "Untitled");
-      setPoster(meta.poster_path);
-      setBackdrop(meta.backdrop_path);
-      setOverview(meta.overview || "");
-      setReleaseDate(meta.first_air_date || meta.release_date || "");
-      setRating(meta.vote_average || null);
-      setGenres(meta.genres?.map((g) => g.name) || []);
-      setHomepage(meta.homepage || "");
-      setTagline(meta.tagline || "");
+      // Fetch details and providers from our API routes
+      const [metaRes, provRes] = await Promise.all([
+        fetch(`/api/tmdb/details?id=${id}&type=${type}`),
+        fetch(`/api/tmdb/providers?id=${id}&type=${type}`),
+      ]);
 
-      const provRes = await fetch(`https://api.themoviedb.org/3/${type}/${id}/watch/providers?api_key=${apiKey}`);
-      const provData = await provRes.json();
-      setProviders(provData.results || {});
+      if (metaRes.ok) {
+        const meta = await metaRes.json();
+        setTitle(meta.name || meta.title || "Untitled");
+        setPoster(meta.poster_path);
+        setBackdrop(meta.backdrop_path);
+        setOverview(meta.overview || "");
+        setReleaseDate(meta.first_air_date || meta.release_date || "");
+        setRating(meta.vote_average || null);
+        setGenres(meta.genres?.map((g: { name: string }) => g.name) || []);
+        setHomepage(meta.homepage || "");
+        setTagline(meta.tagline || "");
+      }
+
+      if (provRes.ok) {
+        const provData = await provRes.json();
+        setProviders(provData.results || {});
+      }
+
       setLoading(false);
     };
 
