@@ -149,12 +149,19 @@ img {
   background: var(--card);
   border: 1px solid var(--border);
   border-radius: 16px;
-  padding: 16px 20px;
+  padding-top: 16px;
+  padding-bottom: 16px;
+  padding-left: 20px;
+  padding-right: 20px;
   font-size: 16px;
   color: var(--foreground);
   width: 100%;
   outline: none;
   transition: all 0.2s ease;
+}
+
+.search-input.with-icon {
+  padding-left: 52px;
 }
 
 .search-input:focus {

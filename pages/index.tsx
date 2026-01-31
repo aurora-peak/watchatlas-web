@@ -1,9 +1,10 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef, useCallback } from "react";
 import { useRouter } from "next/router";
-import { tmdbService, TMDBResult } from "@/lib/tmdb";
+import { tmdbService, TMDBResult, searchTMDBAll, getPosterUrl } from "@/lib/tmdb";
 import ShowCard from "@/components/ShowCard";
 import { Search, TrendingUp, Film, Tv, Globe } from "lucide-react";
 import { useAuth } from "@/lib/AuthContext";
+import Image from "next/image";
 
 export default function HomePage() {
   const router = useRouter();
@@ -13,6 +14,12 @@ export default function HomePage() {
   const [popularMovies, setPopularMovies] = useState<TMDBResult[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
+  const [suggestions, setSuggestions] = useState<TMDBResult[]>([]);
+  const [showSuggestions, setShowSuggestions] = useState(false);
+  const [searchingFor, setSearchingFor] = useState("");
+  const [filterMovies, setFilterMovies] = useState(true);
+  const [filterTV, setFilterTV] = useState(true);
+  const searchRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     const load = async () => {
@@ -30,10 +37,57 @@ export default function HomePage() {
     load();
   }, []);
 
+  // Debounced search for suggestions
+  useEffect(() => {
+    if (!searchQuery.trim() || searchQuery.length < 2) {
+      setSuggestions([]);
+      setShowSuggestions(false);
+      return;
+    }
+
+    const timer = setTimeout(async () => {
+      setSearchingFor(searchQuery);
+      const results = await searchTMDBAll(searchQuery);
+      if (searchQuery === searchingFor || results.length > 0) {
+        const filtered = results.filter((item) => {
+          if (filterMovies && filterTV) return true;
+          if (filterMovies && item.media_type === "movie") return true;
+          if (filterTV && item.media_type === "tv") return true;
+          return false;
+        });
+        setSuggestions(filtered.slice(0, 6));
+        setShowSuggestions(true);
+      }
+    }, 300);
+
+    return () => clearTimeout(timer);
+  }, [searchQuery, filterMovies, filterTV]);
+
+  // Click outside to close suggestions
+  useEffect(() => {
+    const handleClickOutside = (e: MouseEvent) => {
+      if (searchRef.current && !searchRef.current.contains(e.target as Node)) {
+        setShowSuggestions(false);
+      }
+    };
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
+
+  const handleSuggestionClick = useCallback((item: TMDBResult) => {
+    setShowSuggestions(false);
+    setSearchQuery("");
+    router.push(`/details/${item.id}?type=${item.media_type}`);
+  }, [router]);
+
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
     if (searchQuery.trim()) {
-      router.push(`/search?query=${encodeURIComponent(searchQuery.trim())}`);
+      const params = new URLSearchParams();
+      params.set("query", searchQuery.trim());
+      if (filterMovies && !filterTV) params.set("type", "movie");
+      if (filterTV && !filterMovies) params.set("type", "tv");
+      router.push(`/search?${params.toString()}`);
     }
   };
 
@@ -142,20 +196,96 @@ export default function HomePage() {
             </p>
 
             {/* Search bar */}
-            <form onSubmit={handleSearch} className="relative max-w-xl mx-auto">
-              <Search
-                className="absolute left-5 top-1/2 -translate-y-1/2"
-                style={{ color: "var(--muted)" }}
-                size={20}
-              />
-              <input
-                type="text"
-                placeholder="Search movies, TV shows..."
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                className="search-input pl-14 pr-4"
-              />
-            </form>
+            <div ref={searchRef} className="relative max-w-xl mx-auto">
+              <form onSubmit={handleSearch}>
+                <Search
+                  className="absolute left-5 top-1/2 -translate-y-1/2 z-10"
+                  style={{ color: "var(--muted)" }}
+                  size={20}
+                />
+                <input
+                  type="text"
+                  placeholder="Search movies, TV shows..."
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  onFocus={() => suggestions.length > 0 && setShowSuggestions(true)}
+                  className="search-input with-icon"
+                />
+              </form>
+
+              {/* Filter checkboxes */}
+              <div className="flex justify-center gap-6 mt-3">
+                <label className="flex items-center gap-2 cursor-pointer select-none">
+                  <input
+                    type="checkbox"
+                    checked={filterMovies}
+                    onChange={(e) => setFilterMovies(e.target.checked)}
+                    className="w-4 h-4 rounded accent-blue-500"
+                  />
+                  <Film size={16} style={{ color: filterMovies ? "var(--accent)" : "var(--muted)" }} />
+                  <span className="text-sm" style={{ color: filterMovies ? "var(--foreground)" : "var(--muted)" }}>
+                    Movies
+                  </span>
+                </label>
+                <label className="flex items-center gap-2 cursor-pointer select-none">
+                  <input
+                    type="checkbox"
+                    checked={filterTV}
+                    onChange={(e) => setFilterTV(e.target.checked)}
+                    className="w-4 h-4 rounded accent-purple-500"
+                  />
+                  <Tv size={16} style={{ color: filterTV ? "#8b5cf6" : "var(--muted)" }} />
+                  <span className="text-sm" style={{ color: filterTV ? "var(--foreground)" : "var(--muted)" }}>
+                    TV Shows
+                  </span>
+                </label>
+              </div>
+
+              {/* Suggestions dropdown */}
+              {showSuggestions && suggestions.length > 0 && (
+                <div
+                  className="absolute top-full left-0 right-0 mt-2 rounded-xl overflow-hidden overflow-y-auto z-50 shadow-2xl"
+                  style={{ background: "var(--card)", border: "1px solid var(--border)", maxHeight: "400px" }}
+                >
+                  {suggestions.map((item) => (
+                    <button
+                      key={`${item.id}-${item.media_type}`}
+                      onClick={() => handleSuggestionClick(item)}
+                      className="w-full flex items-center gap-3 p-3 text-left transition-colors hover:bg-white/5"
+                    >
+                      {item.poster_path ? (
+                        <div className="relative w-10 h-14 rounded overflow-hidden flex-shrink-0">
+                          <Image
+                            src={getPosterUrl(item.poster_path, "w92")}
+                            alt={item.title || item.name || ""}
+                            fill
+                            className="object-cover"
+                          />
+                        </div>
+                      ) : (
+                        <div
+                          className="w-10 h-14 rounded flex-shrink-0 flex items-center justify-center"
+                          style={{ background: "var(--border)" }}
+                        >
+                          <Film size={16} style={{ color: "var(--muted)" }} />
+                        </div>
+                      )}
+                      <div className="flex-1 min-w-0">
+                        <p className="font-medium truncate">
+                          {item.title || item.name}
+                        </p>
+                        <p className="text-xs" style={{ color: "var(--muted)" }}>
+                          {item.media_type === "movie" ? "Movie" : "TV Show"}
+                          {(item.release_date || item.first_air_date) && (
+                            <> · {(item.release_date || item.first_air_date)?.split("-")[0]}</>
+                          )}
+                        </p>
+                      </div>
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
           </div>
 
           {/* Stats */}

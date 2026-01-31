@@ -2,20 +2,17 @@
 
 import { useRouter } from "next/router";
 import { useEffect, useState } from "react";
+import Image from "next/image";
 import { useAuth } from "@/lib/AuthContext";
 import { getPosterUrl } from "@/lib/tmdb";
 import { getCountryMeta } from "@/lib/countries";
 import { getDisplayCountries } from "@/lib/getDisplayCountries";
-import {
-  Card,
-  CardHeader,
-  CardBody,
-  Divider,
-  Image,
-  Link,
-  Spinner,
-  Chip
-} from "@nextui-org/react";
+import { ArrowLeft, Star, Calendar, ExternalLink, ChevronDown } from "lucide-react";
+
+type Provider = {
+  provider_name: string;
+  logo_path: string;
+};
 
 export default function DetailsPage() {
   const router = useRouter();
@@ -33,6 +30,7 @@ export default function DetailsPage() {
   const [tagline, setTagline] = useState("");
   const [providers, setProviders] = useState<Record<string, any>>({});
   const [loading, setLoading] = useState(true);
+  const [expandedContinents, setExpandedContinents] = useState<Record<string, boolean>>({});
 
   const favoriteCountries = preferences?.favoriteCountries ?? null;
 
@@ -42,7 +40,6 @@ export default function DetailsPage() {
     const fetchDetails = async () => {
       setLoading(true);
 
-      // Fetch details and providers from our API routes
       const [metaRes, provRes] = await Promise.all([
         fetch(`/api/tmdb/details?id=${id}&type=${type}`),
         fetch(`/api/tmdb/providers?id=${id}&type=${type}`),
@@ -84,104 +81,300 @@ export default function DetailsPage() {
     groupedByContinent[continent].push(code);
   });
 
+  const toggleContinent = (continent: string) => {
+    setExpandedContinents((prev) => ({
+      ...prev,
+      [continent]: prev[continent] === undefined ? false : !prev[continent],
+    }));
+  };
+
+  const isContinentExpanded = (continent: string) => {
+    return expandedContinents[continent] !== false;
+  };
+
+  if (loading) {
+    return (
+      <div className="page-container flex items-center justify-center">
+        <div className="text-center">
+          <div className="skeleton w-16 h-16 rounded-full mx-auto mb-4" />
+          <p style={{ color: "var(--muted)" }}>Loading...</p>
+        </div>
+      </div>
+    );
+  }
+
   return (
-    <div className="relative min-h-screen w-full overflow-x-hidden">
+    <div className="page-container fade-in">
+      {/* Backdrop */}
       {backdrop && (
         <div
-          className="fixed inset-0 -z-10 bg-cover bg-center blur-sm brightness-50"
-          style={{ backgroundImage: `url(${getPosterUrl(backdrop, "w1280")})` }}
+          className="fixed inset-0 -z-10"
+          style={{
+            backgroundImage: `url(${getPosterUrl(backdrop, "w1280")})`,
+            backgroundSize: "cover",
+            backgroundPosition: "center",
+            filter: "blur(20px) brightness(0.3)",
+          }}
         />
       )}
 
-      <div className="px-4 md:px-8 pt-8 text-white">
-        {loading ? (
-          <div className="text-center">
-            <Spinner size="lg" label="Loading..." color="default" />
-          </div>
-        ) : (
-          <div className="grid md:grid-cols-3 gap-8">
-            <div className="md:col-span-2 space-y-8 overflow-y-auto max-h-[80vh] pr-2">
-              {Object.entries(groupedByContinent).map(([continent, codes]) => (
-                <div key={continent}>
-                  <h2 className="text-lg font-semibold mb-4">{continent}</h2>
-                  {codes.map((code) => {
-                    const countryData = providers[code];
-                    const countryMeta = getCountryMeta(code);
-                    return (
-                      <Card key={code} className="mb-6">
-                        <CardHeader className="text-md font-semibold">
-                          {countryMeta?.flag} {countryMeta?.name || code}
-                        </CardHeader>
-                        <Divider />
-                        <CardBody>
-                          {!(countryData?.flatrate?.length || countryData?.rent?.length || countryData?.buy?.length) ? (
-                            <p className="text-sm text-default-500">No availability found.</p>
-                          ) : (
-                            <div className="space-y-4">
-                              {["flatrate", "rent", "buy"].map((type) =>
-                                countryData[type]?.length ? (
-                                  <div key={type}>
-                                    <h4 className="text-sm font-bold mb-2 uppercase">{type}</h4>
-                                    <div className="flex flex-wrap gap-4">
-                                      {countryData[type].map((provider) => (
-                                        <div key={provider.provider_name} className="flex flex-col items-center">
-                                          <Image
-                                            src={getPosterUrl(provider.logo_path, "w92")}
-                                            alt={provider.provider_name}
-                                            width={48}
-                                            height={48}
-                                            className="rounded-md shadow"
-                                          />
-                                          <span className="text-xs text-center mt-1">
-                                            {provider.provider_name}
-                                          </span>
-                                        </div>
-                                      ))}
-                                    </div>
-                                  </div>
-                                ) : null
-                              )}
-                            </div>
-                          )}
-                        </CardBody>
-                      </Card>
-                    );
-                  })}
-                </div>
-              ))}
-            </div>
+      {/* Header */}
+      <div className="px-4 py-4">
+        <button
+          onClick={() => router.back()}
+          className="flex items-center gap-2 text-sm font-medium hover:opacity-80 transition-opacity"
+          style={{ color: "var(--muted)" }}
+        >
+          <ArrowLeft size={20} />
+          Back
+        </button>
+      </div>
 
-            <div className="sticky top-20 space-y-4">
-              {poster && (
+      {/* Content */}
+      <div className="px-6 pb-8 pt-2">
+        {/* Hero section with poster and info */}
+        <div className="flex flex-col md:flex-row gap-8 mb-10">
+          {/* Poster */}
+          <div className="flex-shrink-0 mx-auto md:mx-0">
+            {poster ? (
+              <div className="relative w-[200px] h-[300px] rounded-xl overflow-hidden shadow-2xl">
                 <Image
                   src={getPosterUrl(poster)}
                   alt={title}
-                  width={200}
-                  className="rounded-md shadow-lg"
+                  fill
+                  className="object-cover"
+                  priority
                 />
-              )}
-              <h1 className="text-2xl font-bold">{title}</h1>
-              {tagline && <p className="italic text-default-500">{tagline}</p>}
-              {releaseDate && <p className="text-sm text-default-500">Release Date: {releaseDate}</p>}
-              {rating !== null && <p className="text-sm text-default-500">Rating: {rating}/10</p>}
-              {genres.length > 0 && (
-                <div className="flex flex-wrap gap-2">
-                  {genres.map((genre) => (
-                    <Chip key={genre} size="sm" color="secondary">
-                      {genre}
-                    </Chip>
-                  ))}
+              </div>
+            ) : (
+              <div
+                className="w-[200px] h-[300px] rounded-xl flex items-center justify-center"
+                style={{ background: "var(--card)" }}
+              >
+                <span style={{ color: "var(--muted)" }}>No Poster</span>
+              </div>
+            )}
+          </div>
+
+          {/* Info */}
+          <div className="flex-1 text-center md:text-left">
+            <h1 className="text-3xl md:text-4xl font-bold mb-2">{title}</h1>
+
+            {tagline && (
+              <p className="text-lg italic mb-4" style={{ color: "var(--muted)" }}>
+                "{tagline}"
+              </p>
+            )}
+
+            {/* Meta info */}
+            <div className="flex flex-wrap justify-center md:justify-start gap-4 mb-4">
+              {releaseDate && (
+                <div className="flex items-center gap-2">
+                  <Calendar size={16} style={{ color: "var(--accent)" }} />
+                  <span className="text-sm">{releaseDate}</span>
                 </div>
               )}
-              {overview && <p className="text-sm text-default-400">{overview}</p>}
-              {homepage && (
-                <Link href={homepage} isExternal showAnchorIcon className="text-sm">
-                  Official Website
-                </Link>
+              {rating !== null && (
+                <div className="flex items-center gap-2">
+                  <Star size={16} className="text-yellow-400 fill-yellow-400" />
+                  <span className="text-sm">{rating.toFixed(1)}/10</span>
+                </div>
               )}
             </div>
+
+            {/* Genres */}
+            {genres.length > 0 && (
+              <div className="flex flex-wrap justify-center md:justify-start gap-2 mb-4">
+                {genres.map((genre) => (
+                  <span
+                    key={genre}
+                    className="px-3 py-1 rounded-full text-xs font-medium"
+                    style={{ background: "var(--card)", border: "1px solid var(--border)" }}
+                  >
+                    {genre}
+                  </span>
+                ))}
+              </div>
+            )}
+
+            {/* Overview */}
+            {overview && (
+              <p className="text-sm leading-relaxed mb-4" style={{ color: "var(--muted)" }}>
+                {overview}
+              </p>
+            )}
+
+            {/* Homepage link */}
+            {homepage && (
+              <a
+                href={homepage}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center gap-2 text-sm font-medium"
+                style={{ color: "var(--accent)" }}
+              >
+                <ExternalLink size={16} />
+                Official Website
+              </a>
+            )}
           </div>
-        )}
+        </div>
+
+        {/* Streaming Availability */}
+        <div>
+          <h2 className="text-xl font-bold mb-6">Where to Watch</h2>
+
+          {countriesToShow.length === 0 ? (
+            <div
+              className="rounded-xl p-8 text-center"
+              style={{ background: "var(--card)", border: "1px solid var(--border)" }}
+            >
+              <p style={{ color: "var(--muted)" }}>
+                No streaming availability found for your selected countries.
+              </p>
+            </div>
+          ) : (
+            <div className="space-y-4">
+              {Object.entries(groupedByContinent)
+                .sort(([a], [b]) => {
+                  const isALast = a === "Other" || a === "Undefined";
+                  const isBLast = b === "Other" || b === "Undefined";
+                  if (isALast && !isBLast) return 1;
+                  if (isBLast && !isALast) return -1;
+                  return a.localeCompare(b);
+                })
+                .map(([continent, codes]) => (
+                <div key={continent}>
+                  <button
+                    onClick={() => toggleContinent(continent)}
+                    className="w-full flex items-center justify-between py-3 px-4 rounded-xl mb-3 transition-colors hover:bg-white/5"
+                    style={{ background: "var(--card)", border: "1px solid var(--border)" }}
+                  >
+                    <h3 className="text-lg font-semibold" style={{ color: "var(--foreground)" }}>
+                      {continent}
+                      <span className="ml-2 text-sm font-normal" style={{ color: "var(--muted)" }}>
+                        ({codes.length} {codes.length === 1 ? "country" : "countries"})
+                      </span>
+                    </h3>
+                    <ChevronDown
+                      size={20}
+                      style={{
+                        color: "var(--muted)",
+                        transform: isContinentExpanded(continent) ? "rotate(0deg)" : "rotate(-90deg)",
+                        transition: "transform 0.2s ease",
+                      }}
+                    />
+                  </button>
+                  <div
+                    className="grid grid-cols-1 md:grid-cols-2 gap-4 overflow-hidden transition-all duration-300"
+                    style={{
+                      maxHeight: isContinentExpanded(continent) ? "2000px" : "0",
+                      opacity: isContinentExpanded(continent) ? 1 : 0,
+                      marginBottom: isContinentExpanded(continent) ? "1rem" : "0",
+                    }}
+                  >
+                    {codes.map((code) => {
+                      const countryData = providers[code];
+                      const countryMeta = getCountryMeta(code);
+
+                      return (
+                        <div
+                          key={code}
+                          className="rounded-xl p-4"
+                          style={{ background: "var(--card)", border: "1px solid var(--border)" }}
+                        >
+                          <h4 className="font-semibold mb-3">
+                            {countryMeta?.flag} {countryMeta?.name || code}
+                          </h4>
+
+                          {!(countryData?.flatrate?.length || countryData?.rent?.length || countryData?.buy?.length) ? (
+                            <p className="text-sm" style={{ color: "var(--muted)" }}>
+                              No availability found.
+                            </p>
+                          ) : (
+                            <div className="space-y-4">
+                              {countryData?.flatrate?.length > 0 && (
+                                <div>
+                                  <p className="text-xs font-semibold uppercase mb-2" style={{ color: "var(--accent)" }}>
+                                    Stream
+                                  </p>
+                                  <div className="flex flex-wrap gap-2">
+                                    {countryData.flatrate.map((p: Provider) => (
+                                      <div
+                                        key={p.provider_name}
+                                        className="relative w-10 h-10 rounded-lg overflow-hidden"
+                                        title={p.provider_name}
+                                      >
+                                        <Image
+                                          src={getPosterUrl(p.logo_path, "w92")}
+                                          alt={p.provider_name}
+                                          fill
+                                          className="object-cover"
+                                        />
+                                      </div>
+                                    ))}
+                                  </div>
+                                </div>
+                              )}
+
+                              {countryData?.rent?.length > 0 && (
+                                <div>
+                                  <p className="text-xs font-semibold uppercase mb-2" style={{ color: "#8b5cf6" }}>
+                                    Rent
+                                  </p>
+                                  <div className="flex flex-wrap gap-2">
+                                    {countryData.rent.map((p: Provider) => (
+                                      <div
+                                        key={p.provider_name}
+                                        className="relative w-10 h-10 rounded-lg overflow-hidden"
+                                        title={p.provider_name}
+                                      >
+                                        <Image
+                                          src={getPosterUrl(p.logo_path, "w92")}
+                                          alt={p.provider_name}
+                                          fill
+                                          className="object-cover"
+                                        />
+                                      </div>
+                                    ))}
+                                  </div>
+                                </div>
+                              )}
+
+                              {countryData?.buy?.length > 0 && (
+                                <div>
+                                  <p className="text-xs font-semibold uppercase mb-2" style={{ color: "#ec4899" }}>
+                                    Buy
+                                  </p>
+                                  <div className="flex flex-wrap gap-2">
+                                    {countryData.buy.map((p: Provider) => (
+                                      <div
+                                        key={p.provider_name}
+                                        className="relative w-10 h-10 rounded-lg overflow-hidden"
+                                        title={p.provider_name}
+                                      >
+                                        <Image
+                                          src={getPosterUrl(p.logo_path, "w92")}
+                                          alt={p.provider_name}
+                                          fill
+                                          className="object-cover"
+                                        />
+                                      </div>
+                                    ))}
+                                  </div>
+                                </div>
+                              )}
+                            </div>
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
       </div>
     </div>
   );
