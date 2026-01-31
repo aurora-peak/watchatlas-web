@@ -1,69 +1,263 @@
+@import "tailwindcss";
+
 @font-face {
-    font-family: "Showtime";
-    src: url("/fonts/Showtime.ttf") format("truetype");
-    font-weight: normal;
-    font-style: normal;
+  font-family: "Showtime";
+  src: url("/Fonts/Showtime.ttf") format("truetype");
+  font-weight: normal;
+  font-style: normal;
+}
+
+:root {
+  --background: #0a0a0a;
+  --foreground: #fafafa;
+  --card: #141414;
+  --card-hover: #1a1a1a;
+  --border: #262626;
+  --muted: #737373;
+  --accent: #3b82f6;
+  --accent-hover: #2563eb;
+  --gradient-start: #3b82f6;
+  --gradient-end: #8b5cf6;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+body {
+  margin: 0;
+  padding: 0;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  background: var(--background);
+  color: var(--foreground);
+  min-height: 100vh;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+a {
+  text-decoration: none;
+  color: inherit;
+}
+
+img {
+  display: block;
+  max-width: 100%;
+  height: auto;
+}
+
+/* Scrollbar styling */
+.scroll-container {
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: none;
+}
+
+.scroll-container::-webkit-scrollbar {
+  display: none;
+}
+
+/* Custom scrollbar for main content */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: var(--background);
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--border);
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--muted);
+}
+
+/* Glass effect */
+.glass {
+  background: rgba(20, 20, 20, 0.8);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+/* Gradient text */
+.gradient-text {
+  background: linear-gradient(135deg, var(--gradient-start), var(--gradient-end));
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+/* Card hover effect */
+.card-hover {
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.card-hover:hover {
+  transform: translateY(-4px) scale(1.02);
+  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.4);
+}
+
+/* Shimmer loading effect */
+@keyframes shimmer {
+  0% {
+    background-position: -200% 0;
   }
-html, body {
-    margin: 0;
-    padding: 0;
-    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
-    background-color: #f9fafb;
-    color: #111827;
+  100% {
+    background-position: 200% 0;
   }
-  
-  a {
-    text-decoration: none;
-    color: inherit;
+}
+
+.skeleton {
+  background: linear-gradient(
+    90deg,
+    var(--card) 25%,
+    var(--card-hover) 50%,
+    var(--card) 75%
+  );
+  background-size: 200% 100%;
+  animation: shimmer 1.5s infinite;
+  border-radius: 8px;
+}
+
+/* Button styles */
+.btn-primary {
+  background: linear-gradient(135deg, var(--gradient-start), var(--gradient-end));
+  color: white;
+  border: none;
+  padding: 12px 24px;
+  border-radius: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.btn-primary:hover {
+  opacity: 0.9;
+  transform: translateY(-1px);
+}
+
+/* Input styles */
+.search-input {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  padding: 16px 20px;
+  font-size: 16px;
+  color: var(--foreground);
+  width: 100%;
+  outline: none;
+  transition: all 0.2s ease;
+}
+
+.search-input:focus {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.2);
+}
+
+.search-input::placeholder {
+  color: var(--muted);
+}
+
+/* Section title */
+.section-title {
+  font-size: 1.5rem;
+  font-weight: 700;
+  margin-bottom: 1rem;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+/* Bottom navigation */
+.bottom-nav {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  background: rgba(10, 10, 10, 0.95);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  padding: 8px 16px;
+  padding-bottom: calc(8px + env(safe-area-inset-bottom));
+  display: flex;
+  justify-content: space-around;
+  border-top: 1px solid var(--border);
+  z-index: 1000;
+}
+
+.nav-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  padding: 8px 16px;
+  border-radius: 12px;
+  background: transparent;
+  border: none;
+  color: var(--muted);
+  font-size: 11px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.nav-item:hover {
+  color: var(--foreground);
+  background: var(--card);
+}
+
+.nav-item.active {
+  color: var(--accent);
+  background: rgba(59, 130, 246, 0.1);
+}
+
+.nav-item svg {
+  width: 24px;
+  height: 24px;
+}
+
+/* Page container */
+.page-container {
+  min-height: 100vh;
+  padding-bottom: 100px;
+}
+
+/* Fade in animation */
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
   }
-  
-  img {
-    display: block;
-    max-width: 100%;
-    height: auto;
+  to {
+    opacity: 1;
+    transform: translateY(0);
   }
-  .scroll-container {
-    -webkit-overflow-scrolling: touch;
-    scrollbar-width: none; /* Firefox */
-  }
-  
-  .scroll-container::-webkit-scrollbar {
-    display: none; /* Chrome, Safari */
-  }
-  .bottom-nav {
-    position: fixed;
-    bottom: 0;
-    left: 0;
-    right: 0;
-    background-color: #111;
-    padding: 12px 24px;
-    display: flex;
-    justify-content: space-around;
-    border-top: 1px solid #333;
-    z-index: 1000;
-  }
-  
-  .bottom-nav button {
-    background: none;
-    border: none;
-    color: #aaa;
-    font-size: 12px;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    outline: none;
-    cursor: pointer;
-    flex: 1;
-  }
-  
-  .bottom-nav button.active {
-    color: #3b82f6;
-  }
-  
-  .bottom-nav button:hover {
-    color: #fff;
-  }
-  
-  .bottom-nav svg {
-    margin-bottom: 4px;
-  }
+}
+
+.fade-in {
+  animation: fadeIn 0.4s ease-out;
+}
+
+/* Media row */
+.media-row {
+  position: relative;
+}
+
+.media-row::after {
+  content: "";
+  position: absolute;
+  right: 0;
+  top: 0;
+  bottom: 0;
+  width: 60px;
+  background: linear-gradient(to right, transparent, var(--background));
+  pointer-events: none;
+}
