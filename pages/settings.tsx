@@ -51,7 +51,17 @@ export default function SettingsPage() {
 
   // Load Google Sign-In for non-authenticated users
   useEffect(() => {
-    if (user) return;
+    if (user) {
+      console.log("User already signed in:", user.email);
+      return;
+    }
+
+    // Check if script already exists
+    const existingScript = document.querySelector('script[src="https://accounts.google.com/gsi/client"]');
+    if (existingScript) {
+      initializeGoogleSignIn();
+      return;
+    }
 
     const script = document.createElement("script");
     script.src = "https://accounts.google.com/gsi/client";
@@ -59,20 +69,50 @@ export default function SettingsPage() {
     script.defer = true;
     document.body.appendChild(script);
 
-    script.onload = () => {
-      if (window.google) {
-        window.google.accounts.id.initialize({
-          client_id: process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID!,
-          callback: async (response: any) => {
-            try {
-              const credential = GoogleAuthProvider.credential(response.credential);
-              await signInWithCredential(auth, credential);
-            } catch (err) {
-              console.error("Firebase Auth error:", err);
-            }
-          },
-        });
+    script.onload = initializeGoogleSignIn;
 
+    function initializeGoogleSignIn() {
+      if (!window.google) {
+        console.error("Google Sign-In library not loaded");
+        return;
+      }
+
+      const clientId = process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID;
+      if (!clientId) {
+        console.error("NEXT_PUBLIC_GOOGLE_CLIENT_ID is not set");
+        return;
+      }
+
+      console.log("Initializing Google Sign-In with client ID:", clientId.substring(0, 20) + "...");
+
+      window.google.accounts.id.initialize({
+        client_id: clientId,
+        callback: async (response: any) => {
+          console.log("Google Sign-In callback triggered");
+          if (!response.credential) {
+            console.error("No credential in response");
+            return;
+          }
+
+          try {
+            console.log("Creating Firebase credential from Google token");
+            const credential = GoogleAuthProvider.credential(response.credential);
+            console.log("Signing in with Firebase...");
+            const result = await signInWithCredential(auth, credential);
+            console.log("Firebase sign-in successful:", result.user.email);
+            // Force page reload to ensure UI updates
+            window.location.reload();
+          } catch (err: any) {
+            console.error("Firebase Auth error:", err);
+            console.error("Error code:", err?.code);
+            console.error("Error message:", err?.message);
+            alert(`Sign-in failed: ${err?.message || 'Unknown error'}`);
+          }
+        },
+      });
+
+      // Render the button after initialization
+      setTimeout(() => {
         const buttonEl = document.getElementById("g_id_signin");
         if (buttonEl) {
           window.google.accounts.id.renderButton(buttonEl, {
@@ -80,22 +120,30 @@ export default function SettingsPage() {
             size: "large",
             shape: "pill",
           });
+          console.log("Google Sign-In button rendered");
+        } else {
+          console.error("g_id_signin element not found");
         }
-      }
-    };
+      }, 100);
+    }
 
     return () => {
-      const existingScript = document.querySelector('script[src="https://accounts.google.com/gsi/client"]');
-      if (existingScript) existingScript.remove();
+      // Don't remove the script on cleanup as it might cause issues
     };
   }, [user]);
 
   const handleSave = async () => {
     if (user) {
       setSaving(true);
-      await updatePreferences({ favoriteCountries: selected });
-      setSaving(false);
-      router.push("/");
+      try {
+        await updatePreferences({ favoriteCountries: selected });
+        router.push("/");
+      } catch (error) {
+        console.error("Error saving preferences:", error);
+        alert("Failed to save preferences. Please try again.");
+      } finally {
+        setSaving(false);
+      }
     }
   };
 

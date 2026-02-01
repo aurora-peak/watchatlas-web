@@ -36,9 +36,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
 
     const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
+      console.log("Auth state changed:", firebaseUser ? "User signed in" : "User signed out");
       setUser(firebaseUser);
 
       if (firebaseUser) {
+        console.log("Loading preferences for user:", firebaseUser.uid);
         const prefs = await loadUserPreferences(firebaseUser.uid);
         setPreferences(prefs);
 
