@@ -2,16 +2,19 @@ import { useEffect, useState, useRef, useCallback } from "react";
 import { useRouter } from "next/router";
 import { tmdbService, TMDBResult, searchTMDBAll, getPosterUrl } from "@/lib/tmdb";
 import ShowCard from "@/components/ShowCard";
-import { Search, TrendingUp, Film, Tv, Globe } from "lucide-react";
-import { useAuth } from "@/lib/AuthContext";
+import { Search, TrendingUp, Film, Tv, Globe, Star, Clock, Play } from "lucide-react";
 import Image from "next/image";
 
 export default function HomePage() {
   const router = useRouter();
-  const { user } = useAuth();
   const [trendingTV, setTrendingTV] = useState<TMDBResult[]>([]);
   const [trendingMovies, setTrendingMovies] = useState<TMDBResult[]>([]);
   const [popularMovies, setPopularMovies] = useState<TMDBResult[]>([]);
+  const [popularTV, setPopularTV] = useState<TMDBResult[]>([]);
+  const [topRatedMovies, setTopRatedMovies] = useState<TMDBResult[]>([]);
+  const [topRatedTV, setTopRatedTV] = useState<TMDBResult[]>([]);
+  const [upcomingMovies, setUpcomingMovies] = useState<TMDBResult[]>([]);
+  const [nowPlayingMovies, setNowPlayingMovies] = useState<TMDBResult[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
   const [suggestions, setSuggestions] = useState<TMDBResult[]>([]);
@@ -24,14 +27,24 @@ export default function HomePage() {
   useEffect(() => {
     const load = async () => {
       setLoading(true);
-      const [tv, movies, popular] = await Promise.all([
+      const [tv, movies, popular, popTV, topMovies, topTV, upcoming, nowPlaying] = await Promise.all([
         tmdbService.getTrendingTVShows("week"),
         tmdbService.getTrendingMovies("week"),
         tmdbService.getPopularMovies(),
+        tmdbService.getPopularTV(),
+        tmdbService.getTopRatedMovies(),
+        tmdbService.getTopRatedTV(),
+        tmdbService.getUpcomingMovies(),
+        tmdbService.getNowPlayingMovies(),
       ]);
       setTrendingTV(tv.slice(0, 15));
       setTrendingMovies(movies.slice(0, 15));
       setPopularMovies(popular.slice(0, 15));
+      setPopularTV(popTV.slice(0, 15));
+      setTopRatedMovies(topMovies.slice(0, 15));
+      setTopRatedTV(topTV.slice(0, 15));
+      setUpcomingMovies(upcoming.slice(0, 15));
+      setNowPlayingMovies(nowPlaying.slice(0, 15));
       setLoading(false);
     };
     load();
@@ -138,7 +151,7 @@ export default function HomePage() {
   return (
     <div className="page-container">
       {/* Hero Section */}
-      <div className="relative overflow-hidden">
+      <div className="relative overflow-x-clip overflow-y-visible">
         {/* Background gradient */}
         <div
           className="absolute inset-0 opacity-30"
@@ -147,59 +160,22 @@ export default function HomePage() {
           }}
         />
 
-        <div className="relative px-6 pt-8 pb-12">
-          {/* Header */}
-          <div className="flex items-center justify-between mb-8">
-            <div className="flex items-center gap-3">
-              <img src="/logo.png" alt="WatchAtlas" width={48} height={48} className="rounded-lg" />
-              <div>
-                <h1
-                  className="text-2xl font-bold"
-                  style={{ fontFamily: "Showtime, sans-serif" }}
-                >
-                  WatchAtlas
-                </h1>
-              </div>
-            </div>
-
-            {user ? (
-              <div className="flex items-center gap-3">
-                {user.photoURL && (
-                  <img
-                    src={user.photoURL}
-                    alt={user.displayName || "User"}
-                    width={40}
-                    height={40}
-                    className="rounded-full border-2 border-white/20"
-                  />
-                )}
-              </div>
-            ) : (
-              <button
-                onClick={() => router.push("/settings")}
-                className="px-4 py-2 rounded-full text-sm font-medium"
-                style={{ background: "var(--card)", border: "1px solid var(--border)" }}
-              >
-                Sign In
-              </button>
-            )}
-          </div>
-
+        <div className="relative px-6 pt-6 pb-12">
           {/* Hero content */}
           <div className="max-w-2xl mx-auto text-center mb-8">
-            <h2 className="text-3xl md:text-4xl font-bold mb-4">
+            <h2 className="text-2xl md:text-3xl font-bold mb-4">
               Find where to{" "}
               <span className="gradient-text">stream anything</span>
             </h2>
-            <p className="text-lg mb-6" style={{ color: "var(--muted)" }}>
+            <p className="text-base mb-6" style={{ color: "var(--muted)" }}>
               Search across all streaming platforms worldwide. Set your preferred countries and never miss where to watch.
             </p>
 
             {/* Search bar */}
             <div ref={searchRef} className="relative max-w-xl mx-auto">
-              <form onSubmit={handleSearch}>
+              <form onSubmit={handleSearch} className="search-input-wrapper">
                 <Search
-                  className="absolute left-5 top-1/2 -translate-y-1/2 z-10"
+                  className="search-icon"
                   style={{ color: "var(--muted)" }}
                   size={20}
                 />
@@ -251,7 +227,10 @@ export default function HomePage() {
                     <button
                       key={`${item.id}-${item.media_type}`}
                       onClick={() => handleSuggestionClick(item)}
-                      className="w-full flex items-center gap-3 p-3 text-left transition-colors hover:bg-white/5"
+                      className="w-full flex items-center gap-3 p-3 text-left transition-colors"
+                      style={{ background: "transparent" }}
+                      onMouseEnter={(e) => e.currentTarget.style.background = "var(--card-hover)"}
+                      onMouseLeave={(e) => e.currentTarget.style.background = "transparent"}
                     >
                       {item.poster_path ? (
                         <div className="relative w-10 h-14 rounded overflow-hidden flex-shrink-0">
@@ -322,6 +301,7 @@ export default function HomePage() {
             <SkeletonRow />
             <SkeletonRow />
             <SkeletonRow />
+            <SkeletonRow />
           </>
         ) : (
           <>
@@ -336,9 +316,34 @@ export default function HomePage() {
               items={trendingTV}
             />
             <MediaRow
+              title="Now Playing"
+              icon={<Play size={24} style={{ color: "#10b981" }} />}
+              items={nowPlayingMovies}
+            />
+            <MediaRow
               title="Popular Movies"
               icon={<Film size={24} style={{ color: "#ec4899" }} />}
               items={popularMovies}
+            />
+            <MediaRow
+              title="Popular TV Shows"
+              icon={<Tv size={24} style={{ color: "#f59e0b" }} />}
+              items={popularTV}
+            />
+            <MediaRow
+              title="Top Rated Movies"
+              icon={<Star size={24} style={{ color: "#eab308" }} />}
+              items={topRatedMovies}
+            />
+            <MediaRow
+              title="Top Rated TV Shows"
+              icon={<Star size={24} style={{ color: "#22d3ee" }} />}
+              items={topRatedTV}
+            />
+            <MediaRow
+              title="Upcoming Movies"
+              icon={<Clock size={24} style={{ color: "#a855f7" }} />}
+              items={upcomingMovies}
             />
           </>
         )}

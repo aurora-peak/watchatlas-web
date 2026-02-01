@@ -144,9 +144,9 @@ export default function SearchPage() {
 
       {/* Search bar */}
       <div ref={searchRef} className="relative max-w-2xl mb-8">
-        <form onSubmit={handleSearch}>
+        <form onSubmit={handleSearch} className="search-input-wrapper">
           <Search
-            className="absolute left-5 top-1/2 -translate-y-1/2 z-10"
+            className="search-icon"
             style={{ color: "var(--muted)" }}
             size={20}
           />
@@ -156,15 +156,18 @@ export default function SearchPage() {
             value={searchInput}
             onChange={(e) => setSearchInput(e.target.value)}
             onFocus={() => suggestions.length > 0 && setShowSuggestions(true)}
-            className="search-input with-icon"
+            className={`search-input with-icon ${searchInput ? "with-clear" : ""}`}
           />
           {searchInput && (
             <button
               type="button"
               onClick={clearSearch}
-              className="absolute right-4 top-1/2 -translate-y-1/2 p-1 rounded-full hover:bg-white/10 z-10"
+              className="clear-icon rounded-full z-10 transition-colors p-1"
+              style={{ background: "transparent" }}
+              onMouseEnter={(e) => e.currentTarget.style.background = "var(--card-hover)"}
+              onMouseLeave={(e) => e.currentTarget.style.background = "transparent"}
             >
-              <X size={18} style={{ color: "var(--muted)" }} />
+              <X size={20} style={{ color: "var(--muted)" }} />
             </button>
           )}
         </form>
@@ -207,7 +210,10 @@ export default function SearchPage() {
               <button
                 key={`${item.id}-${item.media_type}`}
                 onClick={() => handleSuggestionClick(item)}
-                className="w-full flex items-center gap-3 p-3 text-left transition-colors hover:bg-white/5"
+                className="w-full flex items-center gap-3 p-3 text-left transition-colors"
+                style={{ background: "transparent" }}
+                onMouseEnter={(e) => e.currentTarget.style.background = "var(--card-hover)"}
+                onMouseLeave={(e) => e.currentTarget.style.background = "transparent"}
               >
                 {item.poster_path ? (
                   <div className="relative w-10 h-14 rounded overflow-hidden flex-shrink-0">

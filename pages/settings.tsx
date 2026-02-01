@@ -196,10 +196,10 @@ export default function SettingsPage() {
         </p>
 
         {/* Search */}
-        <div className="relative max-w-md mb-6">
+        <div className="relative max-w-md mb-6 search-input-wrapper">
           <Search
-            className="absolute left-4 top-1/2 -translate-y-1/2"
-            size={18}
+            className="search-icon"
+            size={20}
             style={{ color: "var(--muted)" }}
           />
           <input
@@ -207,7 +207,7 @@ export default function SettingsPage() {
             placeholder="Search countries..."
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
-            className="search-input pl-12"
+            className="search-input with-icon"
           />
         </div>
 

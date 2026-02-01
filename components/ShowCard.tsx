@@ -45,6 +45,7 @@ export default function ShowCard({ result }: Props) {
             style={{
               background: "rgba(0, 0, 0, 0.7)",
               backdropFilter: "blur(4px)",
+              color: "#ffffff",
             }}
           >
             {isMovie ? (

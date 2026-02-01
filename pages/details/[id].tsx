@@ -247,8 +247,10 @@ export default function DetailsPage() {
                 <div key={continent}>
                   <button
                     onClick={() => toggleContinent(continent)}
-                    className="w-full flex items-center justify-between py-3 px-4 rounded-xl mb-3 transition-colors hover:bg-white/5"
+                    className="w-full flex items-center justify-between py-3 px-4 rounded-xl mb-3 transition-colors"
                     style={{ background: "var(--card)", border: "1px solid var(--border)" }}
+                    onMouseEnter={(e) => e.currentTarget.style.background = "var(--card-hover)"}
+                    onMouseLeave={(e) => e.currentTarget.style.background = "var(--card)"}
                   >
                     <h3 className="text-lg font-semibold" style={{ color: "var(--foreground)" }}>
                       {continent}

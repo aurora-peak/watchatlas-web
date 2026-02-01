@@ -64,10 +64,88 @@ export async function getPopularMovies(): Promise<TMDBResult[]> {
   return data.results || [];
 }
 
+export async function getPopularTV(): Promise<TMDBResult[]> {
+  const response = await fetch(`/api/tmdb/lists?type=tv&list=popular`);
+
+  if (!response.ok) {
+    console.error("Popular TV API error:", response.status);
+    return [];
+  }
+
+  const data = await response.json();
+  return data.results || [];
+}
+
+export async function getTopRatedMovies(): Promise<TMDBResult[]> {
+  const response = await fetch(`/api/tmdb/lists?type=movie&list=top_rated`);
+
+  if (!response.ok) {
+    console.error("Top rated movies API error:", response.status);
+    return [];
+  }
+
+  const data = await response.json();
+  return data.results || [];
+}
+
+export async function getTopRatedTV(): Promise<TMDBResult[]> {
+  const response = await fetch(`/api/tmdb/lists?type=tv&list=top_rated`);
+
+  if (!response.ok) {
+    console.error("Top rated TV API error:", response.status);
+    return [];
+  }
+
+  const data = await response.json();
+  return data.results || [];
+}
+
+export async function getUpcomingMovies(): Promise<TMDBResult[]> {
+  const response = await fetch(`/api/tmdb/lists?type=movie&list=upcoming`);
+
+  if (!response.ok) {
+    console.error("Upcoming movies API error:", response.status);
+    return [];
+  }
+
+  const data = await response.json();
+  return data.results || [];
+}
+
+export async function getNowPlayingMovies(): Promise<TMDBResult[]> {
+  const response = await fetch(`/api/tmdb/lists?type=movie&list=now_playing`);
+
+  if (!response.ok) {
+    console.error("Now playing movies API error:", response.status);
+    return [];
+  }
+
+  const data = await response.json();
+  return data.results || [];
+}
+
+export async function getOnTheAirTV(): Promise<TMDBResult[]> {
+  const response = await fetch(`/api/tmdb/lists?type=tv&list=on_the_air`);
+
+  if (!response.ok) {
+    console.error("On the air TV API error:", response.status);
+    return [];
+  }
+
+  const data = await response.json();
+  return data.results || [];
+}
+
 export const tmdbService = {
   searchAll: searchTMDBAll,
   getPosterUrl,
   getTrendingMovies,
   getTrendingTVShows,
   getPopularMovies,
+  getPopularTV,
+  getTopRatedMovies,
+  getTopRatedTV,
+  getUpcomingMovies,
+  getNowPlayingMovies,
+  getOnTheAirTV,
 };

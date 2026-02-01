@@ -19,7 +19,22 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [preferences, setPreferences] = useState<UserPreferences | null>(null);
   const [loading, setLoading] = useState(true);
 
+  // Apply theme based on darkMode preference (dark is default, light when darkMode is false)
+  const applyTheme = (darkMode: boolean) => {
+    if (darkMode) {
+      document.documentElement.classList.remove("light");
+    } else {
+      document.documentElement.classList.add("light");
+    }
+  };
+
   useEffect(() => {
+    // Check localStorage for theme preference (for non-logged-in users)
+    const savedTheme = localStorage.getItem("darkMode");
+    if (savedTheme !== null) {
+      applyTheme(savedTheme === "true");
+    }
+
     const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
       setUser(firebaseUser);
 
@@ -27,14 +42,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         const prefs = await loadUserPreferences(firebaseUser.uid);
         setPreferences(prefs);
 
-        // Apply dark mode preference
-        if (prefs?.darkMode) {
-          document.documentElement.classList.add("dark");
-        } else {
-          document.documentElement.classList.remove("dark");
-        }
+        // Apply dark mode preference from user prefs (default to true/dark)
+        const darkMode = prefs?.darkMode ?? true;
+        applyTheme(darkMode);
+        localStorage.setItem("darkMode", String(darkMode));
       } else {
         setPreferences(null);
+        // For non-logged-in users, use localStorage or default to dark
+        const savedTheme = localStorage.getItem("darkMode");
+        applyTheme(savedTheme === null ? true : savedTheme === "true");
       }
 
       setLoading(false);
@@ -51,21 +67,30 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   const updatePreferences = async (prefs: Partial<UserPreferences>) => {
-    if (!user) return;
+    // Save to localStorage for non-logged-in users
+    if (prefs.darkMode !== undefined) {
+      localStorage.setItem("darkMode", String(prefs.darkMode));
+      applyTheme(prefs.darkMode);
+    }
+
+    if (!user) {
+      // For non-logged-in users, just update local state
+      setPreferences((prev) => ({
+        favoriteCountries: prev?.favoriteCountries ?? [],
+        darkMode: prev?.darkMode ?? true,
+        ...prefs,
+      }));
+      return;
+    }
 
     await saveUserPreferences(user.uid, prefs);
 
     // Update local state
     setPreferences((prev) => ({
       favoriteCountries: prev?.favoriteCountries ?? [],
-      darkMode: prev?.darkMode ?? false,
+      darkMode: prev?.darkMode ?? true,
       ...prefs,
     }));
-
-    // Apply dark mode if it changed
-    if (prefs.darkMode !== undefined) {
-      document.documentElement.classList.toggle("dark", prefs.darkMode);
-    }
   };
 
   const refreshPreferences = async () => {
