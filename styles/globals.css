@@ -317,6 +317,26 @@ img {
   animation: fadeIn 0.4s ease-out;
 }
 
+/* Status banner */
+.status-banner {
+  background: rgba(239, 68, 68, 0.15);
+  border-bottom: 1px solid rgba(239, 68, 68, 0.3);
+  color: #fca5a5;
+}
+
+.status-banner-icon {
+  color: #ef4444;
+}
+
+:root.light .status-banner {
+  background: rgba(239, 68, 68, 0.1);
+  color: #991b1b;
+}
+
+:root.light .status-banner-icon {
+  color: #dc2626;
+}
+
 /* Media row */
 .media-row {
   position: relative;

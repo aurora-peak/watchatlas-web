@@ -2,6 +2,7 @@ import { useRouter } from "next/router";
 import { Home, Search, Settings, Sun, Moon } from "lucide-react";
 import { useAuth } from "@/lib/AuthContext";
 import { useState, useEffect } from "react";
+import StatusBanner from "@/components/StatusBanner";
 
 export default function AppLayout({ children }: { children: React.ReactNode }) {
   const router = useRouter();
@@ -30,6 +31,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
 
   return (
     <div style={{ background: "var(--background)", minHeight: "100vh" }}>
+      <StatusBanner />
       {/* Header */}
       <header
         className="px-4 py-3"
