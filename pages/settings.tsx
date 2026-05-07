@@ -253,6 +253,7 @@ export default function SettingsPage() {
           <input
             type="text"
             placeholder="Search countries..."
+            aria-label="Search countries"
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
             className="search-input with-icon"
@@ -282,6 +283,8 @@ export default function SettingsPage() {
                     return (
                       <button
                         key={country.code}
+                        role="checkbox"
+                        aria-checked={isSelected}
                         onClick={() => toggleCountry(country.code)}
                         className="w-full flex items-center justify-between px-3 py-2 rounded-lg text-left transition-colors"
                         style={{

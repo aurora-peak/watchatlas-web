@@ -93,6 +93,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
               className="p-2 rounded-full transition-colors"
               style={{ background: "var(--card)", border: "1px solid var(--border)" }}
               title={isDarkMode ? "Switch to light mode" : "Switch to dark mode"}
+              aria-label={isDarkMode ? "Switch to light mode" : "Switch to dark mode"}
             >
               {isDarkMode ? (
                 <Sun size={18} style={{ color: "var(--muted)" }} />

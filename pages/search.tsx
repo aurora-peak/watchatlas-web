@@ -153,6 +153,10 @@ export default function SearchPage() {
           <input
             type="text"
             placeholder="Search movies, TV shows..."
+            aria-label="Search movies and TV shows"
+            aria-expanded={showSuggestions && suggestions.length > 0}
+            aria-controls="search-suggestions-listbox"
+            role="combobox"
             value={searchInput}
             onChange={(e) => setSearchInput(e.target.value)}
             onFocus={() => suggestions.length > 0 && setShowSuggestions(true)}
@@ -162,6 +166,7 @@ export default function SearchPage() {
             <button
               type="button"
               onClick={clearSearch}
+              aria-label="Clear search"
               className="clear-icon rounded-full z-10 transition-colors p-1"
               style={{ background: "transparent" }}
               onMouseEnter={(e) => e.currentTarget.style.background = "var(--card-hover)"}
@@ -203,12 +208,15 @@ export default function SearchPage() {
         {/* Suggestions dropdown */}
         {showSuggestions && suggestions.length > 0 && (
           <div
+            id="search-suggestions-listbox"
+            role="listbox"
             className="absolute top-full left-0 right-0 mt-2 rounded-xl overflow-hidden overflow-y-auto z-50 shadow-2xl"
             style={{ background: "var(--card)", border: "1px solid var(--border)", maxHeight: "400px" }}
           >
             {suggestions.map((item) => (
               <button
                 key={`${item.id}-${item.media_type}`}
+                role="option"
                 onClick={() => handleSuggestionClick(item)}
                 className="w-full flex items-center gap-3 p-3 text-left transition-colors"
                 style={{ background: "transparent" }}
