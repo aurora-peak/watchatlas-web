@@ -1,5 +1,5 @@
 import { useRouter } from "next/router";
-import { Home, Search, Settings, Sun, Moon } from "lucide-react";
+import { Home, Compass, Settings, Sun, Moon } from "lucide-react";
 import { useAuth } from "@/lib/AuthContext";
 import { useState, useEffect } from "react";
 import StatusBanner from "@/components/StatusBanner";
@@ -25,7 +25,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
 
   const navItems = [
     { href: "/", icon: Home, label: "Home" },
-    { href: "/search", icon: Search, label: "Search" },
+    { href: "/browse", icon: Compass, label: "Browse" },
     { href: "/settings", icon: Settings, label: "Settings" },
   ];
 
@@ -135,7 +135,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
       <nav className="bottom-nav">
         {navItems.map((item) => {
           const isActive = currentPath === item.href ||
-            (item.href === "/search" && currentPath.startsWith("/search")) ||
+            (item.href === "/browse" && currentPath.startsWith("/browse")) ||
             (item.href === "/" && currentPath === "/");
           const Icon = item.icon;
 

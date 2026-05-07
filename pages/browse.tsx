@@ -1,22 +1,61 @@
 import { useRouter } from "next/router";
 import { useEffect, useState, useRef, useCallback } from "react";
-import { searchTMDBAll, TMDBResult, getPosterUrl } from "@/lib/tmdb";
+import { tmdbService, searchTMDBAll, TMDBResult, getPosterUrl } from "@/lib/tmdb";
 import ShowCard from "@/components/ShowCard";
-import { Search, X, Film, Tv } from "lucide-react";
+import { Search, X, Film, Tv, TrendingUp, Star, Clock, Play } from "lucide-react";
 import Image from "next/image";
 
-export default function SearchPage() {
+export default function BrowsePage() {
   const router = useRouter();
   const { query, type } = router.query;
 
   const [searchInput, setSearchInput] = useState("");
   const [results, setResults] = useState<TMDBResult[] | null>(null);
-  const [loading, setLoading] = useState(false);
+  const [loadingSearch, setLoadingSearch] = useState(false);
+  
   const [suggestions, setSuggestions] = useState<TMDBResult[]>([]);
   const [showSuggestions, setShowSuggestions] = useState(false);
   const [filterMovies, setFilterMovies] = useState(true);
   const [filterTV, setFilterTV] = useState(true);
   const searchRef = useRef<HTMLDivElement>(null);
+
+  // Browse lists states
+  const [trendingTV, setTrendingTV] = useState<TMDBResult[]>([]);
+  const [trendingMovies, setTrendingMovies] = useState<TMDBResult[]>([]);
+  const [popularMovies, setPopularMovies] = useState<TMDBResult[]>([]);
+  const [popularTV, setPopularTV] = useState<TMDBResult[]>([]);
+  const [topRatedMovies, setTopRatedMovies] = useState<TMDBResult[]>([]);
+  const [topRatedTV, setTopRatedTV] = useState<TMDBResult[]>([]);
+  const [upcomingMovies, setUpcomingMovies] = useState<TMDBResult[]>([]);
+  const [nowPlayingMovies, setNowPlayingMovies] = useState<TMDBResult[]>([]);
+  const [loadingBrowse, setLoadingBrowse] = useState(true);
+
+  // Load browse lists on mount
+  useEffect(() => {
+    const loadBrowse = async () => {
+      setLoadingBrowse(true);
+      const [tv, movies, popular, popTV, topMovies, topTV, upcoming, nowPlaying] = await Promise.all([
+        tmdbService.getTrendingTVShows("week"),
+        tmdbService.getTrendingMovies("week"),
+        tmdbService.getPopularMovies(),
+        tmdbService.getPopularTV(),
+        tmdbService.getTopRatedMovies(),
+        tmdbService.getTopRatedTV(),
+        tmdbService.getUpcomingMovies(),
+        tmdbService.getNowPlayingMovies(),
+      ]);
+      setTrendingTV(tv.slice(0, 15));
+      setTrendingMovies(movies.slice(0, 15));
+      setPopularMovies(popular.slice(0, 15));
+      setPopularTV(popTV.slice(0, 15));
+      setTopRatedMovies(topMovies.slice(0, 15));
+      setTopRatedTV(topTV.slice(0, 15));
+      setUpcomingMovies(upcoming.slice(0, 15));
+      setNowPlayingMovies(nowPlaying.slice(0, 15));
+      setLoadingBrowse(false);
+    };
+    loadBrowse();
+  }, []);
 
   // Initialize filters from URL
   useEffect(() => {
@@ -37,6 +76,9 @@ export default function SearchPage() {
       setSearchInput(query);
       performSearch(query);
       setShowSuggestions(false);
+    } else {
+      setSearchInput("");
+      setResults(null);
     }
   }, [query]);
 
@@ -82,7 +124,7 @@ export default function SearchPage() {
 
   const performSearch = async (searchQuery: string, movies = filterMovies, tv = filterTV) => {
     if (!searchQuery.trim()) return;
-    setLoading(true);
+    setLoadingSearch(true);
     const data = await searchTMDBAll(searchQuery);
     const filtered = data.filter((item) => {
       if (movies && tv) return true;
@@ -91,7 +133,7 @@ export default function SearchPage() {
       return false;
     });
     setResults(filtered);
-    setLoading(false);
+    setLoadingSearch(false);
   };
 
   const handleSearch = (e: React.FormEvent) => {
@@ -101,8 +143,10 @@ export default function SearchPage() {
       params.set("query", searchInput.trim());
       if (filterMovies && !filterTV) params.set("type", "movie");
       if (filterTV && !filterMovies) params.set("type", "tv");
-      router.push(`/search?${params.toString()}`, undefined, { shallow: true });
+      router.push(`/browse?${params.toString()}`, undefined, { shallow: true });
       performSearch(searchInput.trim());
+    } else {
+      router.push('/browse', undefined, { shallow: true });
     }
   };
 
@@ -118,6 +162,7 @@ export default function SearchPage() {
   const clearSearch = () => {
     setSearchInput("");
     setResults(null);
+    router.push('/browse', undefined, { shallow: true });
   };
 
   const SkeletonGrid = () => (
@@ -132,11 +177,45 @@ export default function SearchPage() {
     </div>
   );
 
+  const MediaRow = ({ title, icon, items }: { title: string; icon: React.ReactNode; items: TMDBResult[] }) => (
+    <section className="mb-10 fade-in">
+      <div className="mb-4">
+        <h2 className="section-title">
+          {icon}
+          {title}
+        </h2>
+      </div>
+      <div className="media-row">
+        <div className="scroll-container flex gap-4 overflow-x-auto pb-4">
+          {items.map((item) => (
+            <ShowCard key={item.id} result={item} />
+          ))}
+        </div>
+      </div>
+    </section>
+  );
+
+  const SkeletonRow = () => (
+    <section className="mb-10">
+      <div className="mb-4">
+        <div className="skeleton h-8 w-48" />
+      </div>
+      <div className="flex gap-4 overflow-hidden">
+        {[...Array(6)].map((_, i) => (
+          <div key={i} className="flex-shrink-0">
+            <div className="skeleton w-[160px] h-[240px] rounded-xl" />
+            <div className="skeleton h-4 w-32 mt-3" />
+          </div>
+        ))}
+      </div>
+    </section>
+  );
+
   return (
     <div className="page-container px-6 pt-8 fade-in">
       {/* Header */}
       <div className="mb-8">
-        <h1 className="text-2xl font-bold mb-2">Search</h1>
+        <h1 className="text-2xl font-bold mb-2">Browse & Search</h1>
         <p style={{ color: "var(--muted)" }}>
           Find movies and TV shows across all streaming platforms
         </p>
@@ -145,11 +224,7 @@ export default function SearchPage() {
       {/* Search bar */}
       <div ref={searchRef} className="relative max-w-2xl mb-8">
         <form onSubmit={handleSearch} className="search-input-wrapper">
-          <Search
-            className="search-icon"
-            style={{ color: "var(--muted)" }}
-            size={20}
-          />
+          <Search className="search-icon" style={{ color: "var(--muted)" }} size={20} />
           <input
             type="text"
             placeholder="Search movies, TV shows..."
@@ -187,9 +262,7 @@ export default function SearchPage() {
               className="w-4 h-4 rounded accent-blue-500"
             />
             <Film size={16} style={{ color: filterMovies ? "var(--accent)" : "var(--muted)" }} />
-            <span className="text-sm" style={{ color: filterMovies ? "var(--foreground)" : "var(--muted)" }}>
-              Movies
-            </span>
+            <span className="text-sm" style={{ color: filterMovies ? "var(--foreground)" : "var(--muted)" }}>Movies</span>
           </label>
           <label className="flex items-center gap-2 cursor-pointer select-none">
             <input
@@ -199,9 +272,7 @@ export default function SearchPage() {
               className="w-4 h-4 rounded accent-purple-500"
             />
             <Tv size={16} style={{ color: filterTV ? "#8b5cf6" : "var(--muted)" }} />
-            <span className="text-sm" style={{ color: filterTV ? "var(--foreground)" : "var(--muted)" }}>
-              TV Shows
-            </span>
+            <span className="text-sm" style={{ color: filterTV ? "var(--foreground)" : "var(--muted)" }}>TV Shows</span>
           </label>
         </div>
 
@@ -225,30 +296,18 @@ export default function SearchPage() {
               >
                 {item.poster_path ? (
                   <div className="relative w-10 h-14 rounded overflow-hidden flex-shrink-0">
-                    <Image
-                      src={getPosterUrl(item.poster_path, "w92")}
-                      alt={item.title || item.name || ""}
-                      fill
-                      className="object-cover"
-                    />
+                    <Image src={getPosterUrl(item.poster_path, "w92")} alt={item.title || item.name || ""} fill className="object-cover" />
                   </div>
                 ) : (
-                  <div
-                    className="w-10 h-14 rounded flex-shrink-0 flex items-center justify-center"
-                    style={{ background: "var(--border)" }}
-                  >
+                  <div className="w-10 h-14 rounded flex-shrink-0 flex items-center justify-center" style={{ background: "var(--border)" }}>
                     <Film size={16} style={{ color: "var(--muted)" }} />
                   </div>
                 )}
                 <div className="flex-1 min-w-0">
-                  <p className="font-medium truncate">
-                    {item.title || item.name}
-                  </p>
+                  <p className="font-medium truncate">{item.title || item.name}</p>
                   <p className="text-xs" style={{ color: "var(--muted)" }}>
                     {item.media_type === "movie" ? "Movie" : "TV Show"}
-                    {(item.release_date || item.first_air_date) && (
-                      <> · {(item.release_date || item.first_air_date)?.split("-")[0]}</>
-                    )}
+                    {(item.release_date || item.first_air_date) && <> · {(item.release_date || item.first_air_date)?.split("-")[0]}</>}
                   </p>
                 </div>
               </button>
@@ -257,57 +316,61 @@ export default function SearchPage() {
         )}
       </div>
 
-      {/* Results */}
-      {query && (
-        <div className="mb-6">
-          <p style={{ color: "var(--muted)" }}>
-            {loading ? (
-              "Searching..."
-            ) : results ? (
-              <>
-                Found <span style={{ color: "var(--foreground)", fontWeight: 600 }}>{results.length}</span> results for{" "}
-                <span style={{ color: "var(--foreground)", fontWeight: 600 }}>"{query}"</span>
-              </>
-            ) : null}
-          </p>
-        </div>
-      )}
+      {/* Main Content Area */}
+      {query ? (
+        // Render Search Results
+        <>
+          <div className="mb-6">
+            <p style={{ color: "var(--muted)" }}>
+              {loadingSearch ? (
+                "Searching..."
+              ) : results ? (
+                <>Found <span style={{ color: "var(--foreground)", fontWeight: 600 }}>{results.length}</span> results for <span style={{ color: "var(--foreground)", fontWeight: 600 }}>"{query}"</span></>
+              ) : null}
+            </p>
+          </div>
 
-      {loading ? (
-        <SkeletonGrid />
-      ) : results && results.length > 0 ? (
-        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4">
-          {results.map((r) => (
-            <ShowCard key={r.id} result={r} />
-          ))}
-        </div>
-      ) : results && results.length === 0 ? (
-        <div className="text-center py-16">
-          <div
-            className="w-20 h-20 mx-auto mb-4 rounded-full flex items-center justify-center"
-            style={{ background: "var(--card)" }}
-          >
-            <Search size={32} style={{ color: "var(--muted)" }} />
-          </div>
-          <h3 className="text-xl font-semibold mb-2">No results found</h3>
-          <p style={{ color: "var(--muted)" }}>
-            Try searching for something else
-          </p>
-        </div>
-      ) : !query ? (
-        <div className="text-center py-16">
-          <div
-            className="w-20 h-20 mx-auto mb-4 rounded-full flex items-center justify-center"
-            style={{ background: "var(--card)" }}
-          >
-            <Search size={32} style={{ color: "var(--muted)" }} />
-          </div>
-          <h3 className="text-xl font-semibold mb-2">Start searching</h3>
-          <p style={{ color: "var(--muted)" }}>
-            Enter a movie or TV show name above
-          </p>
-        </div>
-      ) : null}
+          {loadingSearch ? (
+            <SkeletonGrid />
+          ) : results && results.length > 0 ? (
+            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4">
+              {results.map((r) => (
+                <ShowCard key={r.id} result={r} />
+              ))}
+            </div>
+          ) : results && results.length === 0 ? (
+            <div className="text-center py-16">
+              <div className="w-20 h-20 mx-auto mb-4 rounded-full flex items-center justify-center" style={{ background: "var(--card)" }}>
+                <Search size={32} style={{ color: "var(--muted)" }} />
+              </div>
+              <h3 className="text-xl font-semibold mb-2">No results found</h3>
+              <p style={{ color: "var(--muted)" }}>Try searching for something else</p>
+            </div>
+          ) : null}
+        </>
+      ) : (
+        // Render Browse Lists
+        <>
+          {loadingBrowse ? (
+            <>
+              <SkeletonRow />
+              <SkeletonRow />
+              <SkeletonRow />
+            </>
+          ) : (
+            <>
+              <MediaRow title="Trending Movies" icon={<TrendingUp size={24} style={{ color: "var(--accent)" }} />} items={trendingMovies} />
+              <MediaRow title="Trending TV Shows" icon={<TrendingUp size={24} style={{ color: "#8b5cf6" }} />} items={trendingTV} />
+              <MediaRow title="Now Playing" icon={<Play size={24} style={{ color: "#10b981" }} />} items={nowPlayingMovies} />
+              <MediaRow title="Popular Movies" icon={<Film size={24} style={{ color: "#ec4899" }} />} items={popularMovies} />
+              <MediaRow title="Popular TV Shows" icon={<Tv size={24} style={{ color: "#f59e0b" }} />} items={popularTV} />
+              <MediaRow title="Top Rated Movies" icon={<Star size={24} style={{ color: "#eab308" }} />} items={topRatedMovies} />
+              <MediaRow title="Top Rated TV Shows" icon={<Star size={24} style={{ color: "#22d3ee" }} />} items={topRatedTV} />
+              <MediaRow title="Upcoming Movies" icon={<Clock size={24} style={{ color: "#a855f7" }} />} items={upcomingMovies} />
+            </>
+          )}
+        </>
+      )}
     </div>
   );
 }
