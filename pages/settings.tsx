@@ -2,7 +2,8 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/router";
 import { useAuth } from "@/lib/AuthContext";
 import fullCountryList from "@/lib/full_country_list_with_flags.json";
-import { Search, Check, Globe, LogOut, User } from "lucide-react";
+import { Search, Check, Globe, LogOut, User, Home } from "lucide-react";
+import Link from "next/link";
 import { GoogleAuthProvider, signInWithCredential } from "firebase/auth";
 import { auth } from "@/lib/firebase";
 
@@ -160,6 +161,18 @@ export default function SettingsPage() {
 
   return (
     <div className="page-container px-6 pt-8 fade-in">
+      {/* Back to Home Button */}
+      <div className="mb-6">
+        <Link
+          href="/"
+          className="flex items-center gap-2 px-4 py-2 rounded-full text-sm font-bold transition-transform hover:scale-105 w-fit shadow-lg shadow-black/20"
+          style={{ background: "var(--foreground)", color: "var(--background)" }}
+        >
+          <Home size={18} />
+          Back to Home
+        </Link>
+      </div>
+
       {/* Header */}
       <div className="mb-8">
         <h1 className="text-2xl font-bold mb-2">Settings</h1>

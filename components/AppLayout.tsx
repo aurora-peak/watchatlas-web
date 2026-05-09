@@ -1,5 +1,5 @@
 import { useRouter } from "next/router";
-import { Home, Compass, Settings, Sun, Moon } from "lucide-react";
+import { Settings, Sun, Moon } from "lucide-react";
 import { useAuth } from "@/lib/AuthContext";
 import { useState, useEffect } from "react";
 import StatusBanner from "@/components/StatusBanner";
@@ -23,11 +23,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
     updatePreferences({ darkMode: newDarkMode });
   };
 
-  const navItems = [
-    { href: "/", icon: Home, label: "Home" },
-    { href: "/browse", icon: Compass, label: "Browse" },
-    { href: "/settings", icon: Settings, label: "Settings" },
-  ];
+
 
   return (
     <div style={{ background: "var(--background)", minHeight: "100vh" }}>
@@ -103,20 +99,16 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
             </button>
 
             {user ? (
-              <>
-                {user.photoURL && (
-                  <button onClick={() => router.push("/settings")}>
-                    <img
-                      src={user.photoURL}
-                      alt={user.displayName || "User"}
-                      width={32}
-                      height={32}
-                      className="rounded-full border-2 hover:opacity-80 transition-opacity"
-                      style={{ borderColor: "var(--border)" }}
-                    />
-                  </button>
-                )}
-              </>
+              <button onClick={() => router.push("/settings")}>
+                <img
+                  src={user.photoURL || ""}
+                  alt={user.displayName || "User"}
+                  width={32}
+                  height={32}
+                  className="rounded-full border-2 hover:opacity-80 transition-opacity"
+                  style={{ borderColor: "var(--border)" }}
+                />
+              </button>
             ) : (
               <button
                 onClick={() => router.push("/settings")}
@@ -126,31 +118,33 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
                 Sign In
               </button>
             )}
+
+            <button
+              onClick={() => router.push("/settings")}
+              className="p-2 rounded-full transition-colors ml-1"
+              style={{ background: "var(--card)", border: "1px solid var(--border)" }}
+              title="Settings"
+              aria-label="Settings"
+            >
+              <Settings size={18} style={{ color: "var(--muted)" }} />
+            </button>
           </div>
         </div>
       </header>
 
       <main className="pb-24">{children}</main>
 
-      <nav className="bottom-nav">
-        {navItems.map((item) => {
-          const isActive = currentPath === item.href ||
-            (item.href === "/browse" && currentPath.startsWith("/browse")) ||
-            (item.href === "/" && currentPath === "/");
-          const Icon = item.icon;
-
-          return (
-            <button
-              key={item.href}
-              className={`nav-item ${isActive ? "active" : ""}`}
-              onClick={() => router.push(item.href)}
-            >
-              <Icon size={24} />
-              <span>{item.label}</span>
-            </button>
-          );
-        })}
-      </nav>
+      {/* Footer / Disclaimers */}
+      <footer className="py-8 px-6 text-center" style={{ borderTop: "1px solid var(--border)", background: "var(--background)", color: "var(--muted)" }}>
+        <div className="max-w-4xl mx-auto flex flex-col gap-2 text-xs">
+          <p>
+            This product uses the TMDB API but is not endorsed or certified by TMDB.
+          </p>
+          <p>
+            This app is completely vibe coded.
+          </p>
+        </div>
+      </footer>
     </div>
   );
 }

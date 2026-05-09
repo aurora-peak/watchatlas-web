@@ -119,14 +119,14 @@ export default function DetailsPage() {
       )}
 
       {/* Header */}
-      <div className="px-4 py-4">
+      <div className="px-6 pt-8 pb-4">
         <button
           onClick={() => router.back()}
-          className="flex items-center gap-2 text-sm font-medium hover:opacity-80 transition-opacity"
-          style={{ color: "var(--muted)" }}
+          className="flex items-center gap-2 px-5 py-2.5 rounded-full text-sm font-bold transition-transform hover:scale-105 w-fit shadow-xl shadow-black/30"
+          style={{ background: "var(--foreground)", color: "var(--background)" }}
         >
-          <ArrowLeft size={20} />
-          Back
+          <ArrowLeft size={18} />
+          Back to Browse
         </button>
       </div>
 
