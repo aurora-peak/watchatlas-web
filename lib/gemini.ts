@@ -5,11 +5,30 @@ export type AIRecommendation = {
   reason: string;
 };
 
+const DEFAULT_GEMINI_MODELS = ["gemini-2.5-flash", "gemini-1.5-flash"];
+
+function getGeminiModels(): string[] {
+  const configuredModels = process.env.GEMINI_MODELS ?? process.env.GEMINI_MODEL;
+
+  if (!configuredModels) {
+    return DEFAULT_GEMINI_MODELS;
+  }
+
+  const models = configuredModels
+    .split(",")
+    .map((model) => model.trim())
+    .filter(Boolean);
+
+  return models.length > 0 ? models : DEFAULT_GEMINI_MODELS;
+}
+
 export async function getAIRecommendations(prompt: string): Promise<AIRecommendation[]> {
   const apiKey = process.env.GEMINI_API_KEY;
   if (!apiKey) {
     throw new Error("GEMINI_API_KEY is not set in environment variables.");
   }
+
+  const models = getGeminiModels();
 
   const systemPrompt = `You are an expert movie and TV show recommendation engine.
 The user will provide a mood or request. You must recommend exactly 5 titles.
@@ -47,35 +66,49 @@ Example output:
     }
   };
 
-  const response = await fetch(
-    `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey.trim()}`,
-    {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify(requestBody),
+  const errors: string[] = [];
+  const requestJson = JSON.stringify(requestBody);
+
+  for (const model of models) {
+    const response = await fetch(
+      `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`,
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "x-goog-api-key": apiKey.trim(),
+        },
+        body: requestJson,
+      }
+    );
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.error(`Gemini API Error (${model}):`, errorText);
+      errors.push(`${model}: ${response.status} ${response.statusText}${errorText ? ` - ${errorText}` : ""}`);
+
+      if (response.status === 404) {
+        continue;
+      }
+
+      throw new Error(`Gemini API failed on ${model}: ${response.status} ${response.statusText}`);
     }
-  );
 
-  if (!response.ok) {
-    const errorText = await response.text();
-    console.error("Gemini API Error:", errorText);
-    throw new Error(`Gemini API failed: ${response.statusText}`);
+    const data = await response.json();
+    const textContent = data.candidates?.[0]?.content?.parts?.[0]?.text;
+
+    if (!textContent) {
+      throw new Error(`Invalid response format from Gemini model ${model}`);
+    }
+
+    try {
+      const parsed = JSON.parse(textContent);
+      return parsed as AIRecommendation[];
+    } catch (error) {
+      console.error(`Failed to parse Gemini JSON output (${model}):`, textContent);
+      throw new Error("Failed to parse AI recommendations");
+    }
   }
 
-  const data = await response.json();
-  const textContent = data.candidates?.[0]?.content?.parts?.[0]?.text;
-
-  if (!textContent) {
-    throw new Error("Invalid response format from Gemini");
-  }
-
-  try {
-    const parsed = JSON.parse(textContent);
-    return parsed as AIRecommendation[];
-  } catch (error) {
-    console.error("Failed to parse Gemini JSON output:", textContent);
-    throw new Error("Failed to parse AI recommendations");
-  }
+  throw new Error(`Gemini API failed for all configured models. ${errors.join(" | ")}`);
 }
