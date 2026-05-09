@@ -136,13 +136,15 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
 
       {/* Footer / Disclaimers */}
       <footer className="py-8 px-6 text-center" style={{ borderTop: "1px solid var(--border)", background: "var(--background)", color: "var(--muted)" }}>
-        <div className="max-w-4xl mx-auto flex flex-col gap-2 text-xs">
-          <p>
-            This product uses the TMDB API but is not endorsed or certified by TMDB.
-          </p>
-          <p>
-            This app is completely vibe coded.
-          </p>
+        <div className="max-w-4xl mx-auto flex flex-col items-center gap-3 text-xs">
+          <div className="flex flex-col items-center gap-2">
+            <p>Movie metadata and streaming details provided by</p>
+            <img 
+              src="/tmdb-logo.png" 
+              alt="TMDB Logo" 
+              className="w-16 h-auto mt-1"
+            />
+          </div>
         </div>
       </footer>
     </div>
