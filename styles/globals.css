@@ -347,6 +347,25 @@ img {
   color: #dc2626;
 }
 
+/* Explicit "unavailable" treatment — honest striped negative space */
+.availability-empty {
+  background-image: repeating-linear-gradient(
+    45deg,
+    var(--card) 0,
+    var(--card) 6px,
+    var(--card-hover) 6px,
+    var(--card-hover) 12px
+  );
+  border: 1px solid var(--border);
+}
+
+/* Mono eyebrow / label (JetBrains Mono) */
+.lbl-mono {
+  font-family: var(--font-mono);
+  text-transform: uppercase;
+  letter-spacing: 0.18em;
+}
+
 /* Media row */
 .media-row {
   position: relative;

@@ -1,105 +1,16 @@
 import { useRouter } from "next/router";
-import { Settings, Sun, Moon } from "lucide-react";
-import { useAuth } from "@/lib/AuthContext";
-import { useState, useEffect } from "react";
 import StatusBanner from "@/components/StatusBanner";
-import { Lockup } from "@/components/Logo";
+import TopNav from "@/components/TopNav";
 
 export default function AppLayout({ children }: { children: React.ReactNode }) {
   const router = useRouter();
-  const currentPath = router.pathname;
-  const { user, preferences, updatePreferences } = useAuth();
-  const [isDarkMode, setIsDarkMode] = useState(true);
-
-  // Initialize theme from preferences or localStorage
-  useEffect(() => {
-    const savedTheme = localStorage.getItem("darkMode");
-    const darkMode = preferences?.darkMode ?? (savedTheme === null ? true : savedTheme === "true");
-    setIsDarkMode(darkMode);
-  }, [preferences]);
-
-  const toggleTheme = () => {
-    const newDarkMode = !isDarkMode;
-    setIsDarkMode(newDarkMode);
-    updatePreferences({ darkMode: newDarkMode });
-  };
-
-
+  // Show the genre sub-nav strip on browse-style routes, hide it on dense pages.
+  const showSubnav = router.pathname === "/" || router.pathname.startsWith("/services");
 
   return (
     <div style={{ background: "var(--background)", minHeight: "100vh" }}>
       <StatusBanner />
-      {/* Header */}
-      <header
-        className="px-4 py-3"
-        style={{
-          borderBottom: "1px solid var(--border)",
-          background: "linear-gradient(180deg, var(--card) 0%, var(--background) 100%)",
-        }}
-      >
-        <div className="flex items-center justify-between">
-          {/* Empty spacer for balance */}
-          <div className="flex-1" />
-
-          {/* Center: brand lockup (Worldplay mark + watchatlas wordmark) */}
-          <button
-            onClick={() => router.push("/")}
-            className="hover:opacity-90 transition-opacity"
-            aria-label="Watchatlas home"
-          >
-            <Lockup markSize={44} wordSize={28} tagline />
-          </button>
-
-          {/* Right: Controls */}
-          <div className="flex-1 flex items-center justify-end gap-3">
-            {/* Theme toggle */}
-            <button
-              onClick={toggleTheme}
-              className="p-2 rounded-full transition-colors"
-              style={{ background: "var(--card)", border: "1px solid var(--border)" }}
-              title={isDarkMode ? "Switch to light mode" : "Switch to dark mode"}
-              aria-label={isDarkMode ? "Switch to light mode" : "Switch to dark mode"}
-            >
-              {isDarkMode ? (
-                <Sun size={18} style={{ color: "var(--muted)" }} />
-              ) : (
-                <Moon size={18} style={{ color: "var(--muted)" }} />
-              )}
-            </button>
-
-            {user ? (
-              <button onClick={() => router.push("/settings")}>
-                <img
-                  src={user.photoURL || ""}
-                  alt={user.displayName || "User"}
-                  width={32}
-                  height={32}
-                  className="rounded-full border-2 hover:opacity-80 transition-opacity"
-                  style={{ borderColor: "var(--border)" }}
-                />
-              </button>
-            ) : (
-              <button
-                onClick={() => router.push("/settings")}
-                className="px-3 py-1.5 rounded-full text-sm font-medium transition-colors"
-                style={{ background: "var(--card)", border: "1px solid var(--border)", color: "var(--foreground)" }}
-              >
-                Sign In
-              </button>
-            )}
-
-            <button
-              onClick={() => router.push("/settings")}
-              className="p-2 rounded-full transition-colors ml-1"
-              style={{ background: "var(--card)", border: "1px solid var(--border)" }}
-              title="Settings"
-              aria-label="Settings"
-            >
-              <Settings size={18} style={{ color: "var(--muted)" }} />
-            </button>
-          </div>
-        </div>
-      </header>
+      <TopNav subnav={showSubnav} />
 
       <main className="pb-24">{children}</main>
 
