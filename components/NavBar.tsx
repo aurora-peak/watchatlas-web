@@ -4,6 +4,7 @@ import { useEffect } from "react";
 import { GoogleAuthProvider, signInWithCredential } from "firebase/auth";
 import { auth } from "../lib/firebase";
 import { useAuth } from "../lib/AuthContext";
+import { Lockup } from "./Logo";
 
 declare global {
   interface Window {
@@ -61,14 +62,8 @@ export default function NavBar() {
 
   return (
     <nav style={styles.navbar}>
-      <div style={styles.logo}>
-        <img src="/logo.png" alt="WatchAtlas Logo" width={72} height={72} />
-      </div>
       <div style={styles.center}>
-        <h1 style={{ fontFamily: "Showtime, sans-serif" }} className="text-2xl font-bold">
-          WatchAtlas
-        </h1>
-        <p style={styles.subheading}>Find where to watch your favorite content</p>
+        <Lockup markSize={40} wordSize={24} tagline />
       </div>
       <div style={styles.rightSection}>
         {user ? (

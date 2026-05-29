@@ -5,6 +5,8 @@ import { doc, setDoc, getDoc } from "firebase/firestore";
 export type UserPreferences = {
   favoriteCountries: string[];
   darkMode: boolean;
+  /** Regions pinned in the Title Detail availability comparator. */
+  pinnedRegions?: string[];
 };
 
 // Helper function to add timeout to promises
@@ -61,6 +63,7 @@ export async function loadUserPreferences(
       return {
         favoriteCountries: Array.isArray(data.favoriteCountries) ? data.favoriteCountries : [],
         darkMode: typeof data.darkMode === "boolean" ? data.darkMode : true,
+        pinnedRegions: Array.isArray(data.pinnedRegions) ? data.pinnedRegions : [],
       };
     }
 

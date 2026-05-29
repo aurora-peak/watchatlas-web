@@ -1,5 +1,8 @@
 node_modules/
 .next/
 .env.local
-.DS_Storetsconfig.tsbuildinfo
+.DS_Store
 .claude/
+
+# TypeScript incremental build info
+tsconfig.tsbuildinfo

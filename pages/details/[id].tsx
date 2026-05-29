@@ -1,23 +1,29 @@
 // pages/details/[id].tsx
 
 import { useRouter } from "next/router";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import Image from "next/image";
 import { useAuth } from "@/lib/AuthContext";
+import { useRegion } from "@/lib/RegionContext";
 import { getPosterUrl } from "@/lib/tmdb";
-import { getCountryMeta } from "@/lib/countries";
-import { getDisplayCountries } from "@/lib/getDisplayCountries";
-import { ArrowLeft, Star, Calendar, ExternalLink, ChevronDown } from "lucide-react";
+import { ArrowLeft, Star, Calendar, ExternalLink } from "lucide-react";
+import AvailabilityMatrix from "@/components/AvailabilityMatrix";
 
-type Provider = {
-  provider_name: string;
-  logo_path: string;
-};
+function regionOptionCount(d: { flatrate?: any[]; rent?: any[]; buy?: any[]; free?: any[]; ads?: any[] }): number {
+  return (
+    (d.flatrate?.length ?? 0) +
+    (d.rent?.length ?? 0) +
+    (d.buy?.length ?? 0) +
+    (d.free?.length ?? 0) +
+    (d.ads?.length ?? 0)
+  );
+}
 
 export default function DetailsPage() {
   const router = useRouter();
   const { id, type } = router.query;
-  const { preferences } = useAuth();
+  const { user, preferences, updatePreferences } = useAuth();
+  const { region } = useRegion();
 
   const [title, setTitle] = useState("");
   const [poster, setPoster] = useState<string | null>(null);
@@ -30,15 +36,17 @@ export default function DetailsPage() {
   const [tagline, setTagline] = useState("");
   const [providers, setProviders] = useState<Record<string, any>>({});
   const [loading, setLoading] = useState(true);
-  const [expandedContinents, setExpandedContinents] = useState<Record<string, boolean>>({});
 
-  const favoriteCountries = preferences?.favoriteCountries ?? null;
+  // Pinned regions for the availability comparator.
+  const [pinned, setPinned] = useState<string[]>([]);
+  const pinnedInitialized = useRef(false);
 
   useEffect(() => {
     if (!id || !type) return;
 
     const fetchDetails = async () => {
       setLoading(true);
+      pinnedInitialized.current = false;
 
       const [metaRes, provRes] = await Promise.all([
         fetch(`/api/tmdb/details?id=${id}&type=${type}`),
@@ -69,28 +77,48 @@ export default function DetailsPage() {
     fetchDetails();
   }, [id, type]);
 
-  const countriesToShow = favoriteCountries
-    ? getDisplayCountries(providers, favoriteCountries)
-    : Object.keys(providers);
+  // Seed the pinned-region set once per title: prefer the user's saved set,
+  // else the active region + their favorite countries, else the regions with
+  // the most availability for this title. Always include the active region.
+  useEffect(() => {
+    if (loading || pinnedInitialized.current) return;
 
-  const groupedByContinent: Record<string, string[]> = {};
-  countriesToShow.forEach((code) => {
-    const meta = getCountryMeta(code);
-    const continent = meta?.continent || "Other";
-    if (!groupedByContinent[continent]) groupedByContinent[continent] = [];
-    groupedByContinent[continent].push(code);
-  });
+    let seed: string[] = [];
+    if (preferences?.pinnedRegions?.length) {
+      seed = [...preferences.pinnedRegions];
+    } else if (preferences?.favoriteCountries?.length) {
+      seed = [region, ...preferences.favoriteCountries];
+    }
 
-  const toggleContinent = (continent: string) => {
-    setExpandedContinents((prev) => ({
-      ...prev,
-      [continent]: prev[continent] === undefined ? false : !prev[continent],
-    }));
+    let result = Array.from(new Set(seed.map((c) => c.toUpperCase()).filter(Boolean)));
+
+    if (result.length === 0) {
+      result = Object.entries(providers)
+        .map(([code, d]) => [code, regionOptionCount(d)] as const)
+        .filter(([, n]) => n > 0)
+        .sort((a, b) => b[1] - a[1])
+        .slice(0, 5)
+        .map(([code]) => code);
+    }
+
+    if (region && !result.includes(region.toUpperCase())) {
+      result.unshift(region.toUpperCase());
+    }
+    if (result.length === 0) result = ["US"];
+
+    setPinned(result.slice(0, 8));
+    pinnedInitialized.current = true;
+  }, [loading, providers, preferences, region]);
+
+  const persistPinned = (next: string[]) => {
+    setPinned(next);
+    updatePreferences({ pinnedRegions: next });
   };
-
-  const isContinentExpanded = (continent: string) => {
-    return expandedContinents[continent] !== false;
+  const addRegion = (code: string) => {
+    const c = code.toUpperCase();
+    if (!pinned.includes(c)) persistPinned([...pinned, c]);
   };
+  const removeRegion = (code: string) => persistPinned(pinned.filter((c) => c !== code));
 
   if (loading) {
     return (
@@ -220,161 +248,29 @@ export default function DetailsPage() {
           </div>
         </div>
 
-        {/* Streaming Availability */}
+        {/* Where to watch — multi-region comparator */}
         <div>
-          <h2 className="text-xl font-bold mb-6">Where to Watch</h2>
+          <h2 className="text-xl font-bold mb-1">Where to watch</h2>
+          <p className="text-sm mb-5" style={{ color: "var(--muted)" }}>
+            Compare availability across regions
+          </p>
 
-          {countriesToShow.length === 0 ? (
+          {Object.keys(providers).length === 0 ? (
             <div
               className="rounded-xl p-8 text-center"
               style={{ background: "var(--card)", border: "1px solid var(--border)" }}
             >
               <p style={{ color: "var(--muted)" }}>
-                No streaming availability found for your selected countries.
+                No streaming availability data found for this title.
               </p>
             </div>
           ) : (
-            <div className="space-y-4">
-              {Object.entries(groupedByContinent)
-                .sort(([a], [b]) => {
-                  const isALast = a === "Other" || a === "Undefined";
-                  const isBLast = b === "Other" || b === "Undefined";
-                  if (isALast && !isBLast) return 1;
-                  if (isBLast && !isALast) return -1;
-                  return a.localeCompare(b);
-                })
-                .map(([continent, codes]) => (
-                <div key={continent}>
-                  <button
-                    onClick={() => toggleContinent(continent)}
-                    className="w-full flex items-center justify-between py-3 px-4 rounded-xl mb-3 transition-colors"
-                    style={{ background: "var(--card)", border: "1px solid var(--border)" }}
-                    onMouseEnter={(e) => e.currentTarget.style.background = "var(--card-hover)"}
-                    onMouseLeave={(e) => e.currentTarget.style.background = "var(--card)"}
-                  >
-                    <h3 className="text-lg font-semibold" style={{ color: "var(--foreground)" }}>
-                      {continent}
-                      <span className="ml-2 text-sm font-normal" style={{ color: "var(--muted)" }}>
-                        ({codes.length} {codes.length === 1 ? "country" : "countries"})
-                      </span>
-                    </h3>
-                    <ChevronDown
-                      size={20}
-                      style={{
-                        color: "var(--muted)",
-                        transform: isContinentExpanded(continent) ? "rotate(0deg)" : "rotate(-90deg)",
-                        transition: "transform 0.2s ease",
-                      }}
-                    />
-                  </button>
-                  <div
-                    className="grid grid-cols-1 md:grid-cols-2 gap-4 overflow-hidden transition-all duration-300"
-                    style={{
-                      maxHeight: isContinentExpanded(continent) ? "2000px" : "0",
-                      opacity: isContinentExpanded(continent) ? 1 : 0,
-                      marginBottom: isContinentExpanded(continent) ? "1rem" : "0",
-                    }}
-                  >
-                    {codes.map((code) => {
-                      const countryData = providers[code];
-                      const countryMeta = getCountryMeta(code);
-
-                      return (
-                        <div
-                          key={code}
-                          className="rounded-xl p-4"
-                          style={{ background: "var(--card)", border: "1px solid var(--border)" }}
-                        >
-                          <h4 className="font-semibold mb-3">
-                            {countryMeta?.flag} {countryMeta?.name || code}
-                          </h4>
-
-                          {!(countryData?.flatrate?.length || countryData?.rent?.length || countryData?.buy?.length) ? (
-                            <p className="text-sm" style={{ color: "var(--muted)" }}>
-                              No availability found.
-                            </p>
-                          ) : (
-                            <div className="space-y-4">
-                              {countryData?.flatrate?.length > 0 && (
-                                <div>
-                                  <p className="text-xs font-semibold uppercase mb-2" style={{ color: "var(--accent)" }}>
-                                    Stream
-                                  </p>
-                                  <div className="flex flex-wrap gap-2">
-                                    {countryData.flatrate.map((p: Provider) => (
-                                      <div
-                                        key={p.provider_name}
-                                        className="relative w-10 h-10 rounded-lg overflow-hidden"
-                                        title={p.provider_name}
-                                      >
-                                        <Image
-                                          src={getPosterUrl(p.logo_path, "w92")}
-                                          alt={p.provider_name}
-                                          fill
-                                          className="object-cover"
-                                        />
-                                      </div>
-                                    ))}
-                                  </div>
-                                </div>
-                              )}
-
-                              {countryData?.rent?.length > 0 && (
-                                <div>
-                                  <p className="text-xs font-semibold uppercase mb-2" style={{ color: "#8b5cf6" }}>
-                                    Rent
-                                  </p>
-                                  <div className="flex flex-wrap gap-2">
-                                    {countryData.rent.map((p: Provider) => (
-                                      <div
-                                        key={p.provider_name}
-                                        className="relative w-10 h-10 rounded-lg overflow-hidden"
-                                        title={p.provider_name}
-                                      >
-                                        <Image
-                                          src={getPosterUrl(p.logo_path, "w92")}
-                                          alt={p.provider_name}
-                                          fill
-                                          className="object-cover"
-                                        />
-                                      </div>
-                                    ))}
-                                  </div>
-                                </div>
-                              )}
-
-                              {countryData?.buy?.length > 0 && (
-                                <div>
-                                  <p className="text-xs font-semibold uppercase mb-2" style={{ color: "#ec4899" }}>
-                                    Buy
-                                  </p>
-                                  <div className="flex flex-wrap gap-2">
-                                    {countryData.buy.map((p: Provider) => (
-                                      <div
-                                        key={p.provider_name}
-                                        className="relative w-10 h-10 rounded-lg overflow-hidden"
-                                        title={p.provider_name}
-                                      >
-                                        <Image
-                                          src={getPosterUrl(p.logo_path, "w92")}
-                                          alt={p.provider_name}
-                                          fill
-                                          className="object-cover"
-                                        />
-                                      </div>
-                                    ))}
-                                  </div>
-                                </div>
-                              )}
-                            </div>
-                          )}
-                        </div>
-                      );
-                    })}
-                  </div>
-                </div>
-              ))}
-            </div>
+            <AvailabilityMatrix
+              providers={providers}
+              pinnedRegions={pinned}
+              onAddRegion={addRegion}
+              onRemoveRegion={removeRegion}
+            />
           )}
         </div>
       </div>

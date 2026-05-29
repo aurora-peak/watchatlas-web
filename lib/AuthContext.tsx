@@ -80,6 +80,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setPreferences((prev) => ({
         favoriteCountries: prev?.favoriteCountries ?? [],
         darkMode: prev?.darkMode ?? true,
+        pinnedRegions: prev?.pinnedRegions ?? [],
         ...prefs,
       }));
       return;
