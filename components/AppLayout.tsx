@@ -3,6 +3,7 @@ import { Settings, Sun, Moon } from "lucide-react";
 import { useAuth } from "@/lib/AuthContext";
 import { useState, useEffect } from "react";
 import StatusBanner from "@/components/StatusBanner";
+import { Lockup } from "@/components/Logo";
 
 export default function AppLayout({ children }: { children: React.ReactNode }) {
   const router = useRouter();
@@ -40,45 +41,13 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
           {/* Empty spacer for balance */}
           <div className="flex-1" />
 
-          {/* Center: Logo and Title */}
+          {/* Center: brand lockup (Worldplay mark + watchatlas wordmark) */}
           <button
             onClick={() => router.push("/")}
-            className="flex items-center gap-3 hover:opacity-90 transition-opacity"
+            className="hover:opacity-90 transition-opacity"
+            aria-label="Watchatlas home"
           >
-            <img
-              src="/logo.svg"
-              alt="WatchAtlas Logo"
-              style={{
-                height: "clamp(2.5rem, 8vw, 4.5rem)",
-                width: "auto",
-              }}
-            />
-            <div className="flex flex-col">
-              <h1
-                className="font-bold tracking-tight"
-                style={{
-                  fontFamily: "Showtime, sans-serif",
-                  fontSize: "clamp(1.5rem, 6vw, 3rem)",
-                  lineHeight: 1.1,
-                }}
-              >
-                <span className="gradient-text">WATCH</span>
-                <span style={{ color: "var(--foreground)" }}>ATLAS</span>
-              </h1>
-              <p
-                className="tracking-widest uppercase"
-                style={{
-                  color: "var(--muted)",
-                  fontSize: "clamp(0.4rem, 1.2vw, 0.65rem)",
-                  letterSpacing: "0.2em",
-                  marginTop: "6px",
-                  lineHeight: 1,
-                  textAlign: "center",
-                }}
-              >
-                Global Streaming Guide
-              </p>
-            </div>
+            <Lockup markSize={44} wordSize={28} tagline />
           </button>
 
           {/* Right: Controls */}
