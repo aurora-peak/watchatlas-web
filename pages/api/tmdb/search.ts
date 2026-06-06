@@ -27,6 +27,11 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
     const [tvRes, movieRes] = await Promise.all([fetch(tvUrl), fetch(movieUrl)]);
 
+    if (!tvRes.ok || !movieRes.ok) {
+      const status = !tvRes.ok ? tvRes.status : movieRes.status;
+      return res.status(status).json({ error: "Failed to search TMDB" });
+    }
+
     const tvData = await tvRes.json();
     const movieData = await movieRes.json();
 

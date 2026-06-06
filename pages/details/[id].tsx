@@ -30,6 +30,7 @@ export default function DetailsPage() {
   const [tagline, setTagline] = useState("");
   const [providers, setProviders] = useState<Record<string, any>>({});
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
   const [expandedContinents, setExpandedContinents] = useState<Record<string, boolean>>({});
 
   const favoriteCountries = preferences?.favoriteCountries ?? null;
@@ -39,13 +40,18 @@ export default function DetailsPage() {
 
     const fetchDetails = async () => {
       setLoading(true);
+      setError("");
 
-      const [metaRes, provRes] = await Promise.all([
-        fetch(`/api/tmdb/details?id=${id}&type=${type}`),
-        fetch(`/api/tmdb/providers?id=${id}&type=${type}`),
-      ]);
+      try {
+        const [metaRes, provRes] = await Promise.all([
+          fetch(`/api/tmdb/details?id=${id}&type=${type}`),
+          fetch(`/api/tmdb/providers?id=${id}&type=${type}`),
+        ]);
 
-      if (metaRes.ok) {
+        if (!metaRes.ok) {
+          throw new Error(`Details request failed with status ${metaRes.status}`);
+        }
+
         const meta = await metaRes.json();
         setTitle(meta.name || meta.title || "Untitled");
         setPoster(meta.poster_path);
@@ -56,14 +62,20 @@ export default function DetailsPage() {
         setGenres(meta.genres?.map((g: { name: string }) => g.name) || []);
         setHomepage(meta.homepage || "");
         setTagline(meta.tagline || "");
-      }
 
-      if (provRes.ok) {
-        const provData = await provRes.json();
-        setProviders(provData.results || {});
+        if (provRes.ok) {
+          const provData = await provRes.json();
+          setProviders(provData.results || {});
+        } else {
+          setProviders({});
+        }
+      } catch (err) {
+        console.error("Failed to load details:", err);
+        setError("We couldn't load this title right now.");
+        setProviders({});
+      } finally {
+        setLoading(false);
       }
-
-      setLoading(false);
     };
 
     fetchDetails();
@@ -98,6 +110,24 @@ export default function DetailsPage() {
         <div className="text-center">
           <div className="skeleton w-16 h-16 rounded-full mx-auto mb-4" />
           <p style={{ color: "var(--muted)" }}>Loading...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="page-container flex items-center justify-center px-6">
+        <div className="text-center">
+          <h1 className="text-2xl font-bold mb-3">Title unavailable</h1>
+          <p className="mb-6" style={{ color: "var(--muted)" }}>{error}</p>
+          <button
+            onClick={() => router.back()}
+            className="px-5 py-2.5 rounded-full text-sm font-bold transition-transform hover:scale-105"
+            style={{ background: "var(--foreground)", color: "var(--background)" }}
+          >
+            Back to Browse
+          </button>
         </div>
       </div>
     );

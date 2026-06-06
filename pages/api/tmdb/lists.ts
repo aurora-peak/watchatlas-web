@@ -31,6 +31,11 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   try {
     const url = `${API_BASE}/${type}/${list}?api_key=${apiKey}`;
     const response = await fetch(url);
+
+    if (!response.ok) {
+      return res.status(response.status).json({ error: "Failed to fetch list" });
+    }
+
     const data = await response.json();
 
     const results = (data.results || []).map((item: any) => ({
