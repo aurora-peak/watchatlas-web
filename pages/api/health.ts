@@ -9,7 +9,7 @@ let cachedResult: HealthCheckResponse | null = null;
 let cachedAt = 0;
 
 async function checkTMDB(): Promise<HealthCheckResponse> {
-  const apiKey = process.env.TMDB_API_KEY || process.env.NEXT_PUBLIC_TMDB_API_KEY;
+  const apiKey = process.env.TMDB_API_KEY;
 
   if (!apiKey) {
     return {

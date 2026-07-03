@@ -77,7 +77,7 @@ Open [http://localhost:3000](http://localhost:3000) to view the app.
 Create a `.env.local` file based on `.env.local.example` and supply your **own** values:
 
 ```env
-NEXT_PUBLIC_TMDB_API_KEY=your_tmdb_api_key
+TMDB_API_KEY=your_server_side_tmdb_api_key
 NEXT_PUBLIC_FIREBASE_API_KEY=your_firebase_api_key
 NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN=your_project.firebaseapp.com
 NEXT_PUBLIC_FIREBASE_PROJECT_ID=your_project_id

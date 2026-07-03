@@ -22,7 +22,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     return res.status(400).json({ error: `Invalid list. Valid options: ${validLists.join(", ")}` });
   }
 
-  const apiKey = process.env.TMDB_API_KEY || process.env.NEXT_PUBLIC_TMDB_API_KEY;
+  const apiKey = process.env.TMDB_API_KEY;
 
   if (!apiKey) {
     return res.status(500).json({ error: "TMDB API key not configured" });
