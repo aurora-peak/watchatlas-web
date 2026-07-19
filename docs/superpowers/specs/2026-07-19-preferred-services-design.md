@@ -9,14 +9,14 @@ Let signed-in users pick the streaming services they subscribe to, and use that 
 
 ## Scope
 
-**In:** service selection UI in Settings, `favoriteServices` in Firestore preferences, two new TMDB proxy routes (provider catalog, discover), one new home-page row, unit tests for the merge logic.
+**In:** service selection UI in Settings, `favoriteServices` in Firestore preferences, two new TMDB proxy routes (provider catalog, discover), one new home-page row, two-tier grouping of the detail page's where-to-watch view, unit tests for the pure logic.
 
-**Out (deliberate):** detail-page provider highlighting or filtering, signed-out/localStorage preferences, per-country service lists, any watchlist or recommendation behavior.
+**Out (deliberate):** hiding/filtering providers on detail pages (a "my services only" toggle), signed-out/localStorage preferences, per-country service lists, any watchlist or recommendation behavior.
 
 ## Decisions made during brainstorm
 
 1. **Flat service list, not per-country.** One global set of selections applied across all favorite countries. TMDB provider IDs are global (Netflix = 8 everywhere), so a flat set is coherent; a service simply never matches in a country where it doesn't operate.
-2. **Services power the home row only.** Detail pages are unchanged in this project.
+2. **Services power the home row and detail-page grouping.** (Revised during spec review — originally home row only.) Detail pages group each country's providers into "Your services" first, then "Also available on"; nothing is ever hidden.
 3. **Approach A:** extend the existing preference model and proxy-route architecture (vs. localStorage-first preferences, or a hardcoded curated service list — both rejected).
 4. **Picker UX: country tabs.** One tab per favorite country; each tab shows that country's catalog; selections are global, so a service chosen in one tab appears selected in every tab that offers it.
 
@@ -70,13 +70,21 @@ favoriteServices: { id: number; name: string; logoPath: string }[]   // default 
 - The row does not render at all when: signed out, `favoriteServices` empty, fetch fails, or results empty. The home page never shows an error state for this row.
 - Reflects preference changes on next page load (no live re-fetch plumbing).
 
-### 6. Pure logic + tests
+### 6. Detail page — two-tier where-to-watch
+
+- In `pages/details/[id].tsx`, within each country's provider list, providers whose ID is in `favoriteServices` render first under a **"Your services"** heading, visually distinct (e.g., accent border/badge per the existing CSS-variable system); all remaining providers follow under **"Also available on"**.
+- The split is applied per country via a pure helper (`splitProvidersByPreference` in `lib/discoverMerge.ts` or a sibling), keyed by TMDB provider ID.
+- Degenerate cases: signed out or no services → today's flat rendering, no headings; none of the user's services present in a given country → that country renders the flat list, no empty "Your services" tier; all providers are the user's → "Also available on" tier omitted.
+- Existing stream/rent/buy semantics within the list are unchanged — this project only reorders and groups.
+
+### 7. Pure logic + tests
 
 - Merge/dedupe/sort for both routes lives in pure functions in `lib/discoverMerge.ts` (and a small catalog-merge helper), imported by the API routes.
 - **First real tests in the repo**, using the already-wired node test runner (`npm test`):
   - catalog merge: movie+TV dedupe, region filtering, priority sort;
   - discover merge: cross-region dedupe by `(media_type, id)`, popularity sort, top-20 cap, partial-failure input;
-  - param validation helpers (regions/providers parsing).
+  - param validation helpers (regions/providers parsing);
+  - `splitProvidersByPreference`: preferred-first ordering, empty-tier omission, signed-out passthrough.
 
 ## Error handling summary
 
@@ -85,7 +93,7 @@ favoriteServices: { id: number; name: string; logoPath: string }[]   // default 
 | Invalid query params | 400 with message |
 | TMDB partially down (some regions fail) | Merge successful responses; row still renders |
 | TMDB fully down | Route 502; Settings shows retry message; home row hidden |
-| Signed out / no services | Settings section gated; home row absent |
+| Signed out / no services | Settings section gated; home row absent; detail page renders today's flat list |
 
 ## Backlog mapping
 
@@ -93,5 +101,6 @@ One `feat: preferred streaming services` issue with stories, linked as sub-issue
 
 1. `story: pick my services in settings` (data model + catalog route + tabbed picker)
 2. `story: see an "On My Services" row on home` (discover route + row)
+3. `story: see my services first on a title's where-to-watch` (two-tier grouping on detail pages)
 
 Tasks get created during the coding sessions, per convention.
