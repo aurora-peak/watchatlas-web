@@ -69,6 +69,12 @@ Entries marked `[inferred]` were reconstructed from code and git history during 
 - **Alternatives:** third-party expiry API (paid vendor, patchy coverage — event schema leaves room to add it later as `changeType: "leaving"`); per-user diffing (cost scales with users instead of titles); email digests (own project later).
 - **Why:** Free, TMDB-terms-safe, and honest about what the data supports; global diffing keeps cron cost proportional to unique titles. Full design: `docs/superpowers/specs/2026-07-19-watchlist-availability-design.md`.
 
+## 2026-07-19 — Ship the roadmap as two releases: Phase 2 (v2.0) and Phase 3 (v3.0)
+
+- **Decision:** The PRD (`docs/PRD.md`) frames the roadmap as two releases against the shipped v1.0 web app. **Phase 2** = preferred services, watchlist + availability alerts, AI recommendations, and the cross-platform UI redesign (with app requirements 5a as a gating input). **Phase 3** = the Apple app builds themselves (5b–5e) plus App Store release operations.
+- **Alternatives:** one undifferentiated backlog; a release per feature; putting the redesign in Phase 3 alongside the apps.
+- **Why:** Phase 2 is everything that ships on the existing web stack and can go out as one coherent product update; Phase 3 introduces a genuinely new platform, toolchain, and external dependency (App Store review) and shouldn't gate web releases. Keeping the redesign in Phase 2 — but after 5a — means the apps start against a finished design language instead of driving one.
+
 ## 2026-07-19 — Adopt standard project docs + GitHub backlog structure
 
 - **Decision:** Onboard WatchAtlas to the standard workflow: `docs/ARCHITECTURE.md`, this decision log, `CLAUDE.md`, `GitHub-Project-Setup.md`, `type:` labels, and a "WatchAtlas Board" user-level GitHub Project.
