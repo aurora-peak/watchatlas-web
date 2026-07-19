@@ -51,9 +51,15 @@ Entries marked `[inferred]` were reconstructed from code and git history during 
 
 ---
 
+## 2026-07-19 — Apple platform apps: SwiftUI multiplatform, hybrid backend, app-aware redesign
+
+- **Decision:** Launch iOS/iPadOS/macOS/tvOS apps as a program of sub-projects (see `docs/superpowers/specs/2026-07-19-apple-apps-program.md`). Stack: Swift + SwiftUI multiplatform. Backend: hybrid — native Firebase SDK for auth/user data, existing Next.js API routes for TMDB/discover/recommendations. Sequencing: app requirements + API contract (5a, incl. Sign in with Apple) are nailed down as an **input to the UI redesign**, so #1 produces one cross-platform design language.
+- **Alternatives:** React Native / Capacitor (weak tvOS+macOS); full BFF or Firebase-only backends; apps entirely before or entirely after the redesign.
+- **Why:** Only SwiftUI treats all four targets as first-class; hybrid mirrors the proven web architecture without re-exposing the TMDB key; an app-aware redesign avoids restyling the apps right after launch.
+
 ## 2026-07-19 — Roadmap order: services → watchlist/alerts → AI recs → UI redesign
 
-- **Decision:** Build in this order: (1) preferred-services selection, (2) watchlist + leaving/coming-soon alerts, (3) proper AI recommendation engine, (4) complete UI redesign last.
+- **Decision:** Build in this order: (1) preferred-services selection, (2) watchlist + leaving/coming-soon alerts, (3) proper AI recommendation engine, (4) complete UI redesign last — with the redesign now taking the Apple-apps requirements (5a) as an input, and the app builds following it.
 - **Alternatives:** UI-first; AI-first.
 - **Why:** Services preference is foundational and feeds both the watchlist alerts (scoped to your services/countries) and the recommender (subscription signals). Redesigning the UI last means every surface exists before restyling. Noted risk for watchlist alerts: TMDB exposes only *current* availability, so leaving/coming-soon needs snapshot-diffing or another source — to be resolved in that project's brainstorm.
 
