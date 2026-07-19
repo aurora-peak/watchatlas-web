@@ -121,8 +121,8 @@ This block gates the redesign; it must land before FR-25.
 
 ### 5.7 Security & hygiene — *issue #12 and carried drift*
 
-- **FR-33** — `.env.local.example` contains placeholders only; every variable the code reads is listed there. The real values previously committed are rotated at their providers.
-- **FR-34** — No new code reads `NEXT_PUBLIC_TMDB_API_KEY`; the server-only migration completes during Phase 2.
+- **FR-33** — *(Partly delivered in `d0b6451`, 2026-07-02.)* `.env.local.example` contains placeholders only, and every variable the code reads is listed there — the six operational vars (`CRON_SECRET`, `NEXT_PUBLIC_SITE_URL`, and the four alert-channel vars) still need adding. **Outstanding regardless of the file:** the values previously committed remain in git history and must be rotated at TMDB, Firebase, and Google Cloud.
+- **FR-34** — *(Delivered in `d0b6451`.)* No code reads `NEXT_PUBLIC_TMDB_API_KEY`; the server-only migration is complete. Phase 2 must not reintroduce it.
 - **FR-35** — Pure logic added in Phase 2 (catalog and discover merges, availability diffing, user-event filtering, pick validation, cache signatures) is covered by tests on the existing runner. These are the repository's first tests.
 - **FR-36** — No uid or email is logged in production paths.
 

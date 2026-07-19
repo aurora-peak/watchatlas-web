@@ -51,7 +51,7 @@ tests/                 # EMPTY
 
 The client never calls TMDB directly. `lib/tmdb.ts` → `/api/tmdb/*` → `api.themoviedb.org/3` server-side.
 
-- **API key:** every route reads `process.env.TMDB_API_KEY || process.env.NEXT_PUBLIC_TMDB_API_KEY` — a mid-flight migration from a client-exposed key to a server-only key. The migration is incomplete.
+- **API key:** every route reads `process.env.TMDB_API_KEY` only. The migration away from the client-exposed `NEXT_PUBLIC_TMDB_API_KEY` completed in `d0b6451` (2026-07-02).
 - **Caching:** `Cache-Control: s-maxage + stale-while-revalidate` per route — search 300s, trending/popular/lists 600s, details/providers 3600s (Vercel CDN caching).
 - **Search** queries movie + TV endpoints in parallel and merges by `popularity`.
 - **Quirk:** popular movies come from `/api/tmdb/popular`; popular TV from `/api/tmdb/lists?list=popular` — two overlapping routes for the same shape of data.
@@ -71,19 +71,21 @@ The client never calls TMDB directly. `lib/tmdb.ts` → `/api/tmdb/*` → `api.t
 
 ## Environment variables
 
-In `.env.local.example`: `NEXT_PUBLIC_TMDB_API_KEY`, `NEXT_PUBLIC_FIREBASE_*` (6 vars), `NEXT_PUBLIC_GOOGLE_CLIENT_ID`, `GEMINI_API_KEY` (dead — AI feature removed).
+In `.env.local.example` (placeholders only since `d0b6451`): `TMDB_API_KEY`, `NEXT_PUBLIC_FIREBASE_*` (6 vars), `NEXT_PUBLIC_GOOGLE_CLIENT_ID`.
 
-**Read by code but missing from the example file:** `TMDB_API_KEY` (server-only migration target), `CRON_SECRET`, `DISCORD_WEBHOOK_URL`, `SLACK_WEBHOOK_URL`, `RESEND_API_KEY`, `NOTIFICATION_EMAIL_TO`, `NEXT_PUBLIC_SITE_URL`.
+**Read by code but still missing from the example file:** `CRON_SECRET`, `DISCORD_WEBHOOK_URL`, `SLACK_WEBHOOK_URL`, `RESEND_API_KEY`, `NOTIFICATION_EMAIL_TO`, `NEXT_PUBLIC_SITE_URL`.
 
 ## Known drift & issues (as of 2026-07-19)
 
-1. **Security: `.env.local.example` contains real-looking secret values** (TMDB, Firebase, Google client ID, Gemini) committed to git — should be placeholders, and exposed keys rotated.
+> Items 1, 8 and 10 were first written against a stale checkout and have been corrected: commit `d0b6451` (2026-07-02) already fixed the example file, the `.gitignore`, and the key migration.
+
+1. ~~**Security: `.env.local.example` contains real-looking secret values.**~~ **Fixed in `d0b6451`** — the file now holds placeholders and the dead `GEMINI_API_KEY` is gone. **Still outstanding:** the previously committed values remain in git history, so those keys must be rotated at TMDB, Firebase, and Google Cloud.
 2. **Two competing theme systems:** `next-themes` (`localStorage("theme")`, `.dark`/`.light`) coexists with a custom toggle in `AuthContext`/`AppLayout` (`localStorage("darkMode")`, `.light` class). The custom one is what the UI toggle drives; they can disagree.
 3. **Unused dependencies:** `zustand`, `framer-motion` (no imports found); `next-themes` half-used.
 4. **Dead code:** `components/NavBar.tsx` (with duplicate GSI logic) and its orphaned `bottom-nav`/`nav-item` CSS in `globals.css`.
 5. **No tests** despite wired-up runner; Playwright E2E referenced in git history (`06495c1`) is absent from the tree.
 6. **AI recommendations removed** (`5df64da`) — Gemini code is gone; only the stale env var remains.
 7. **Missing asset:** `getPosterUrl()` falls back to `/placeholder.png`, which doesn't exist in `public/`.
-8. **Malformed `.gitignore` line:** `.DS_Storetsconfig.tsbuildinfo` — two entries concatenated, so neither is ignored.
+8. ~~**Malformed `.gitignore` line.**~~ **Fixed in `d0b6451`** — `.DS_Store` and `tsconfig.tsbuildinfo` are separate entries again.
 9. **Verbose auth debug logging** (uids, emails) left in `AuthContext.tsx` / `settings.tsx`.
-10. **TMDB server-key migration incomplete** (`NEXT_PUBLIC_TMDB_API_KEY` still honored).
+10. ~~**TMDB server-key migration incomplete.**~~ **Fixed in `d0b6451`** — no route reads `NEXT_PUBLIC_TMDB_API_KEY` any more.
