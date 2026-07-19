@@ -36,7 +36,7 @@ Built and maintained by [Aurora Peak](https://github.com/aurora-peak).
 | Layer | Tooling |
 | --- | --- |
 | Framework | Next.js 14 (Pages Router), React 18, TypeScript 5 |
-| UI | NextUI, Tailwind CSS v4, lucide-react / heroicons |
+| UI | NextUI, Tailwind CSS v4, lucide-react |
 | Auth & data | Firebase Auth (Google) + Firestore (named database `watchatlaspreference`) |
 | Content | TMDB v3 API, proxied server-side through `/api/tmdb/*` |
 | Hosting | Vercel, including a daily cron |
@@ -93,6 +93,7 @@ watchatlas-web/
 ├── lib/           # TMDB client, Firebase/Firestore, auth context, country data
 ├── styles/        # globals.css design system (dark default)
 ├── docs/          # PRD, ARCHITECTURE, DECISIONS, and design specs
+├── tests/         # Node test runner suites
 ├── types/         # Shared TypeScript types
 └── public/        # Static assets
 ```

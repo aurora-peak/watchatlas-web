@@ -12,7 +12,7 @@ WatchAtlas is a global streaming availability guide (Next.js 14 Pages Router + T
 | --- | --- |
 | `npm run dev` | Start the dev server |
 | `npm run build` | Production build |
-| `npm test` | Node built-in test runner over `tests/**/*.test.ts` (currently no tests) |
+| `npm test` | Node built-in test runner over `tests/**/*.test.ts` |
 
 ## Workflow — no uncaptured work
 
@@ -24,6 +24,8 @@ Work is tracked on the **[WatchAtlas](https://github.com/orgs/aurora-peak/projec
 - Don't pre-create Tasks — break Stories into Tasks during the coding session and link them then.
 - Every issue goes on the board. Status flows **Backlog → Ready → In progress → In review → Done** (this board's convention, richer than the playbook's Todo/In Progress/Done); the board also has Priority and Size fields.
 - Commits/PRs reference the issue (`Fixes #12`) so it auto-links and auto-closes.
+
+**Issue quality:** titles are clear and imperative; bodies state what and why, acceptance criteria, and a link to the parent Feature/Story. Keep sub-issue checklists current so parent progress bars stay accurate.
 
 ## Architecture ground rules
 

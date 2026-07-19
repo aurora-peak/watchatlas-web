@@ -44,7 +44,7 @@ lib/
   full_country_list_with_flags.json  # ~250 countries
 theme/                 # EMPTY
 types/                 # health.ts, global.d.ts (Window.google)
-tests/                 # EMPTY
+tests/                 # countries, getDisplayCountries, tmdb (node test runner)
 ```
 
 ## Data flow (TMDB)
@@ -81,11 +81,12 @@ In `.env.local.example` (placeholders only since `d0b6451`): `TMDB_API_KEY`, `NE
 
 1. ~~**Security: `.env.local.example` contains real-looking secret values.**~~ **Fixed in `d0b6451`** — the file now holds placeholders and the dead `GEMINI_API_KEY` is gone. **Still outstanding:** the previously committed values remain in git history, so those keys must be rotated at TMDB, Firebase, and Google Cloud.
 2. **Two competing theme systems:** `next-themes` (`localStorage("theme")`, `.dark`/`.light`) coexists with a custom toggle in `AuthContext`/`AppLayout` (`localStorage("darkMode")`, `.light` class). The custom one is what the UI toggle drives; they can disagree.
-3. **Unused dependencies:** `zustand`, `framer-motion` (no imports found); `next-themes` half-used.
-4. **Dead code:** `components/NavBar.tsx` (with duplicate GSI logic) and its orphaned `bottom-nav`/`nav-item` CSS in `globals.css`.
+3. **Unused dependencies:** `zustand`, `framer-motion`, `@heroicons/react` (no imports found); `next-themes` half-used.
+4. **Dead code:** `components/NavBar.tsx` (with duplicate GSI logic) and its orphaned `bottom-nav`/`nav-item` CSS in `globals.css`; **`lib/countryContinents.ts`**, which looks like the continent source but is imported by nothing — both `settings.tsx` and `details/[id].tsx` read the `continent` field from `full_country_list_with_flags.json` instead. The two disagree for 216 of 249 countries, so anyone "fixing" continents in the wrong file would see no effect.
 5. **Thin test coverage.** The first tests landed 2026-07-19 (19 tests over `getDisplayCountries`, the country/continent data, and `getPosterUrl`). Everything else — components, pages, API routes — is still uncovered, and the Playwright E2E setup referenced in git history (`06495c1`) is absent from the tree.
-6. **AI recommendations removed** (`5df64da`) — Gemini code is gone; only the stale env var remains.
-7. **Missing asset:** `getPosterUrl()` falls back to `/placeholder.png`, which doesn't exist in `public/`.
+6. **AI recommendations removed** (`5df64da`) — the Gemini code is gone, and `d0b6451` removed the stale `GEMINI_API_KEY` too. No trace remains outside `docs/`.
+7. **Missing asset:** `getPosterUrl()` falls back to `/placeholder.png`, which doesn't exist in `public/` — every posterless title renders a broken image.
+7b. **"Undefined" continent headings:** 42 of the 249 countries in `full_country_list_with_flags.json` carry `continent: "Undefined"`, which `settings.tsx` renders verbatim as a section heading.
 8. ~~**Malformed `.gitignore` line.**~~ **Fixed in `d0b6451`** — `.DS_Store` and `tsconfig.tsbuildinfo` are separate entries again.
 9. **Verbose auth debug logging** (uids, emails) left in `AuthContext.tsx` / `settings.tsx`.
 10. ~~**TMDB server-key migration incomplete.**~~ **Fixed in `d0b6451`** — no route reads `NEXT_PUBLIC_TMDB_API_KEY` any more.

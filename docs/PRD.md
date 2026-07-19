@@ -61,7 +61,7 @@ Summarized from `docs/ARCHITECTURE.md`; that document is authoritative for detai
 - **Identity:** Firebase Auth, Google sign-in only. Preferences in a *named* Firestore database `watchatlaspreference`, at `users/{uid}` → `{ favoriteCountries, darkMode }`.
 - **Surfaces:** Home (search + browse rows), title detail (where-to-watch grouped by country and continent), Settings (sign-in + favorite countries).
 - **Operations:** a TMDB health probe, a status banner, and a daily Vercel cron that fans out Discord/Slack/email alerts on status transitions.
-- **Gaps carried into Phase 2:** no tests despite a wired-up runner; `.env.local.example` contains real-looking secret values committed to git; the server-only TMDB key migration is incomplete; two competing theme systems coexist; `components/NavBar.tsx` is dead code.
+- **Gaps carried into Phase 2:** test coverage reaches only the pure helpers in `lib/` (components, pages, and API routes are uncovered); two competing theme systems coexist; `components/NavBar.tsx` and `lib/countryContinents.ts` are dead code; 42 countries are grouped under a literal "Undefined" heading; `public/placeholder.png` is referenced but missing. The secrets and TMDB-key issues that appeared in earlier drafts were resolved in `d0b6451` — only key rotation remains.
 
 ## 5. Functional Requirements
 

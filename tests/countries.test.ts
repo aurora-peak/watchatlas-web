@@ -1,7 +1,6 @@
 import { test, describe } from "node:test";
 import assert from "node:assert/strict";
 import { getCountryList, getCountryMeta } from "../lib/countries";
-import { countryContinents } from "../lib/countryContinents";
 
 describe("country list", () => {
   test("every entry has a code, name, and flag", () => {
@@ -12,12 +11,13 @@ describe("country list", () => {
     }
   });
 
-  test("codes are unique ISO-3166-1 alpha-2", () => {
+  test("codes are unique and alpha-2 shaped", () => {
+    // Shape only — this does not verify membership in the ISO-3166-1 registry.
     const codes = getCountryList().map((c) => c.code);
 
     assert.equal(new Set(codes).size, codes.length, "duplicate country codes");
     for (const code of codes) {
-      assert.match(code, /^[A-Z]{2}$/, `not alpha-2: ${code}`);
+      assert.match(code, /^[A-Z]{2}$/, `not alpha-2 shaped: ${code}`);
     }
   });
 
@@ -40,26 +40,52 @@ describe("country list", () => {
   });
 });
 
-describe("continent mapping", () => {
+// Continent grouping reads the `continent` field on each country in
+// full_country_list_with_flags.json — see pages/settings.tsx:41 and
+// pages/details/[id].tsx:91. lib/countryContinents.ts looks like it serves this
+// purpose but is imported by nothing; these tests deliberately target the field
+// the app actually renders from.
+describe("continent grouping data", () => {
   test("maps a sample of countries to their expected continent", () => {
-    assert.equal(countryContinents["US"], "North America");
-    assert.equal(countryContinents["BR"], "South America");
-    assert.equal(countryContinents["AU"], "Oceania");
-    assert.equal(countryContinents["AO"], "Africa");
+    const continentOf = (code: string) => getCountryMeta(code)?.continent;
+
+    assert.equal(continentOf("US"), "North America");
+    assert.equal(continentOf("BR"), "South America");
+    assert.equal(continentOf("AU"), "Oceania");
+    assert.equal(continentOf("AO"), "Africa");
+    assert.equal(continentOf("DE"), "Europe");
+    assert.equal(continentOf("JP"), "Asia");
   });
 
-  test("keys are alpha-2 and values are non-empty", () => {
-    for (const [code, continent] of Object.entries(countryContinents)) {
-      assert.match(code, /^[A-Z]{2}$/, `not alpha-2: ${code}`);
-      assert.ok(continent, `empty continent for ${code}`);
-    }
+  test("every country carries a non-empty continent, so none are dropped from grouping", () => {
+    const missing = getCountryList().filter((c) => !c.continent);
+
+    assert.deepEqual(missing, [], `countries with no continent: ${missing.map((c) => c.code).join(", ")}`);
   });
 
-  test("every country in the list has a continent, so none are dropped from grouping", () => {
-    const missing = getCountryList()
-      .map((c) => c.code)
-      .filter((code) => !countryContinents[code]);
+  test("KNOWN BUG: 42 countries are grouped under the literal header 'Undefined'", () => {
+    // settings.tsx renders the continent string straight into a section heading,
+    // so these show the user a group titled "Undefined". Pinned here so the count
+    // cannot silently grow; delete this test when the data is corrected.
+    const undefinedContinent = getCountryList().filter((c) => c.continent === "Undefined");
 
-    assert.deepEqual(missing, [], `countries with no continent mapping: ${missing.join(", ")}`);
+    assert.equal(undefinedContinent.length, 42);
+  });
+
+  test("aside from the known bug, continents come from a small closed set", () => {
+    const expected = new Set([
+      "Africa",
+      "Antarctica",
+      "Asia",
+      "Europe",
+      "North America",
+      "Oceania",
+      "South America",
+      "Undefined", // the known bug above
+    ]);
+
+    const unexpected = [...new Set(getCountryList().map((c) => c.continent))].filter((c) => !expected.has(c));
+
+    assert.deepEqual(unexpected, [], `unexpected continent values: ${unexpected.join(", ")}`);
   });
 });
