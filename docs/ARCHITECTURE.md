@@ -19,7 +19,7 @@ Originally started as an Expo/React Native mobile app (a gitignored `.expo/` rem
 | Auth/DB | Firebase Auth (Google sign-in only) + Firestore (named database `watchatlaspreference`) |
 | Data source | TMDB v3 API, proxied through internal Next.js API routes |
 | Hosting | Vercel (`vercel.json`), one daily cron |
-| Testing | Node built-in test runner wired up (`npm test`), but `tests/` is empty |
+| Testing | Node built-in test runner (`npm test` → `node --import tsx --test tests/**/*.test.ts`); covers the pure helpers in `lib/` |
 
 ## Directory map
 
@@ -83,7 +83,7 @@ In `.env.local.example` (placeholders only since `d0b6451`): `TMDB_API_KEY`, `NE
 2. **Two competing theme systems:** `next-themes` (`localStorage("theme")`, `.dark`/`.light`) coexists with a custom toggle in `AuthContext`/`AppLayout` (`localStorage("darkMode")`, `.light` class). The custom one is what the UI toggle drives; they can disagree.
 3. **Unused dependencies:** `zustand`, `framer-motion` (no imports found); `next-themes` half-used.
 4. **Dead code:** `components/NavBar.tsx` (with duplicate GSI logic) and its orphaned `bottom-nav`/`nav-item` CSS in `globals.css`.
-5. **No tests** despite wired-up runner; Playwright E2E referenced in git history (`06495c1`) is absent from the tree.
+5. **Thin test coverage.** The first tests landed 2026-07-19 (19 tests over `getDisplayCountries`, the country/continent data, and `getPosterUrl`). Everything else — components, pages, API routes — is still uncovered, and the Playwright E2E setup referenced in git history (`06495c1`) is absent from the tree.
 6. **AI recommendations removed** (`5df64da`) — Gemini code is gone; only the stale env var remains.
 7. **Missing asset:** `getPosterUrl()` falls back to `/placeholder.png`, which doesn't exist in `public/`.
 8. ~~**Malformed `.gitignore` line.**~~ **Fixed in `d0b6451`** — `.DS_Store` and `tsconfig.tsbuildinfo` are separate entries again.
