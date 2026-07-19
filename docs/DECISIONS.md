@@ -57,6 +57,12 @@ Entries marked `[inferred]` were reconstructed from code and git history during 
 - **Alternatives:** UI-first; AI-first.
 - **Why:** Services preference is foundational and feeds both the watchlist alerts (scoped to your services/countries) and the recommender (subscription signals). Redesigning the UI last means every surface exists before restyling. Noted risk for watchlist alerts: TMDB exposes only *current* availability, so leaving/coming-soon needs snapshot-diffing or another source — to be resolved in that project's brainstorm.
 
+## 2026-07-19 — Watchlist alerts via global snapshot-diffing, in-app only
+
+- **Decision:** Detect availability changes by daily-diffing TMDB provider data per unique watchlisted title (global snapshots + append-only events), surfaced in-app on a dedicated `/watchlist` page as a badged grid with a 7-day badge window. Requires firebase-admin for the cron. No email; no predictive "leaving soon" in v1.
+- **Alternatives:** third-party expiry API (paid vendor, patchy coverage — event schema leaves room to add it later as `changeType: "leaving"`); per-user diffing (cost scales with users instead of titles); email digests (own project later).
+- **Why:** Free, TMDB-terms-safe, and honest about what the data supports; global diffing keeps cron cost proportional to unique titles. Full design: `docs/superpowers/specs/2026-07-19-watchlist-availability-design.md`.
+
 ## 2026-07-19 — Adopt standard project docs + GitHub backlog structure
 
 - **Decision:** Onboard WatchAtlas to the standard workflow: `docs/ARCHITECTURE.md`, this decision log, `CLAUDE.md`, `GitHub-Project-Setup.md`, `type:` labels, and a "WatchAtlas Board" user-level GitHub Project.
