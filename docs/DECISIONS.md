@@ -51,6 +51,12 @@ Entries marked `[inferred]` were reconstructed from code and git history during 
 
 ---
 
+## 2026-07-19 — Roadmap order: services → watchlist/alerts → AI recs → UI redesign
+
+- **Decision:** Build in this order: (1) preferred-services selection, (2) watchlist + leaving/coming-soon alerts, (3) proper AI recommendation engine, (4) complete UI redesign last.
+- **Alternatives:** UI-first; AI-first.
+- **Why:** Services preference is foundational and feeds both the watchlist alerts (scoped to your services/countries) and the recommender (subscription signals). Redesigning the UI last means every surface exists before restyling. Noted risk for watchlist alerts: TMDB exposes only *current* availability, so leaving/coming-soon needs snapshot-diffing or another source — to be resolved in that project's brainstorm.
+
 ## 2026-07-19 — Adopt standard project docs + GitHub backlog structure
 
 - **Decision:** Onboard WatchAtlas to the standard workflow: `docs/ARCHITECTURE.md`, this decision log, `CLAUDE.md`, `GitHub-Project-Setup.md`, `type:` labels, and a "WatchAtlas Board" user-level GitHub Project.
