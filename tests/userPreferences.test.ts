@@ -1,6 +1,6 @@
 import { test, describe } from "node:test";
 import assert from "node:assert/strict";
-import { normalizePreferences } from "../lib/firestore";
+import { normalizePreferences } from "../lib/preferences";
 
 describe("normalizePreferences", () => {
   test("defaults favoriteServices to an empty array when absent", () => {
@@ -45,5 +45,13 @@ describe("normalizePreferences", () => {
     const prefs = normalizePreferences({ favoriteServices: [{ id: 8, name: "Netflix" }] });
 
     assert.deepEqual(prefs.favoriteServices, [{ id: 8, name: "Netflix", logoPath: "" }]);
+  });
+
+  test("rejects a non-finite id", () => {
+    const prefs = normalizePreferences({
+      favoriteServices: [{ id: NaN, name: "Broken", logoPath: "/b.jpg" }],
+    });
+
+    assert.deepEqual(prefs.favoriteServices, []);
   });
 });

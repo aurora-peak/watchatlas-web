@@ -1,45 +1,11 @@
 // lib/firestore.ts
 import { db } from "./firebase";
 import { doc, setDoc, getDoc } from "firebase/firestore";
+import { normalizePreferences } from "./preferences";
+import type { UserPreferences } from "./preferences";
 
-export type FavoriteService = {
-  id: number;
-  name: string;
-  logoPath: string;
-};
-
-export type UserPreferences = {
-  favoriteCountries: string[];
-  darkMode: boolean;
-  favoriteServices: FavoriteService[];
-};
-
-// Firestore documents are untrusted input: a partial write or an older client
-// can leave any field missing or the wrong shape. Normalizing in one place keeps
-// the defaults identical for the loader and for callers rebuilding local state.
-export function normalizePreferences(data: unknown): UserPreferences {
-  const record = (data ?? {}) as Record<string, unknown>;
-
-  const favoriteServices = Array.isArray(record.favoriteServices)
-    ? record.favoriteServices.filter(isFavoriteService).map((service) => ({
-        id: service.id,
-        name: service.name,
-        logoPath: typeof service.logoPath === "string" ? service.logoPath : "",
-      }))
-    : [];
-
-  return {
-    favoriteCountries: Array.isArray(record.favoriteCountries) ? record.favoriteCountries : [],
-    darkMode: typeof record.darkMode === "boolean" ? record.darkMode : true,
-    favoriteServices,
-  };
-}
-
-function isFavoriteService(value: unknown): value is { id: number; name: string; logoPath?: unknown } {
-  if (typeof value !== "object" || value === null) return false;
-  const candidate = value as Record<string, unknown>;
-  return typeof candidate.id === "number" && typeof candidate.name === "string";
-}
+export { normalizePreferences } from "./preferences";
+export type { FavoriteService, UserPreferences } from "./preferences";
 
 // Helper function to add timeout to promises
 function withTimeout<T>(promise: Promise<T>, ms: number, operation: string): Promise<T> {
