@@ -7,9 +7,11 @@ import { useAuth } from "@/lib/AuthContext";
 import { getPosterUrl } from "@/lib/tmdb";
 import { getCountryMeta } from "@/lib/countries";
 import { getDisplayCountries } from "@/lib/getDisplayCountries";
+import { splitProvidersByPreference, buildProviderDisplayTiers } from "@/lib/providerPreferences";
 import { ArrowLeft, Star, Calendar, ExternalLink, ChevronDown } from "lucide-react";
 
 type Provider = {
+  provider_id: number;
   provider_name: string;
   logo_path: string;
 };
@@ -34,6 +36,7 @@ export default function DetailsPage() {
   const [expandedContinents, setExpandedContinents] = useState<Record<string, boolean>>({});
 
   const favoriteCountries = preferences?.favoriteCountries ?? null;
+  const favoriteServices = preferences?.favoriteServices ?? [];
 
   useEffect(() => {
     if (!id || !type) return;
@@ -325,29 +328,49 @@ export default function DetailsPage() {
                             </p>
                           ) : (
                             <div className="space-y-4">
-                              {countryData?.flatrate?.length > 0 && (
-                                <div>
-                                  <p className="text-xs font-semibold uppercase mb-2" style={{ color: "var(--accent)" }}>
-                                    Stream
-                                  </p>
-                                  <div className="flex flex-wrap gap-2">
-                                    {countryData.flatrate.map((p: Provider) => (
-                                      <div
-                                        key={p.provider_name}
-                                        className="relative w-10 h-10 rounded-lg overflow-hidden"
-                                        title={p.provider_name}
-                                      >
-                                        <Image
-                                          src={getPosterUrl(p.logo_path, "w92")}
-                                          alt={p.provider_name}
-                                          fill
-                                          className="object-cover"
-                                        />
+                              {countryData?.flatrate?.length > 0 && (() => {
+                                const { preferred, others } = splitProvidersByPreference(
+                                  countryData.flatrate as Provider[],
+                                  favoriteServices
+                                );
+                                const tiers = buildProviderDisplayTiers(preferred, others);
+
+                                return (
+                                  <div className="space-y-3">
+                                    {tiers.map((tier) => (
+                                      <div key={tier.label}>
+                                        <p
+                                          className="text-xs font-semibold uppercase mb-2"
+                                          style={{ color: "var(--accent)" }}
+                                        >
+                                          {tier.label}
+                                        </p>
+                                        <div className="flex flex-wrap gap-2">
+                                          {tier.items.map((p: Provider) => (
+                                            <div
+                                              key={p.provider_name}
+                                              className="relative w-10 h-10 rounded-lg overflow-hidden"
+                                              title={p.provider_name}
+                                              style={
+                                                tier.label === "Your services"
+                                                  ? { boxShadow: "0 0 0 2px var(--accent)" }
+                                                  : undefined
+                                              }
+                                            >
+                                              <Image
+                                                src={getPosterUrl(p.logo_path, "w92")}
+                                                alt={p.provider_name}
+                                                fill
+                                                className="object-cover"
+                                              />
+                                            </div>
+                                          ))}
+                                        </div>
                                       </div>
                                     ))}
                                   </div>
-                                </div>
-                              )}
+                                );
+                              })()}
 
                               {countryData?.rent?.length > 0 && (
                                 <div>

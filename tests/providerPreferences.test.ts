@@ -1,6 +1,6 @@
 import { test, describe } from "node:test";
 import assert from "node:assert/strict";
-import { splitProvidersByPreference } from "../lib/providerPreferences";
+import { splitProvidersByPreference, buildProviderDisplayTiers } from "../lib/providerPreferences";
 import type { FavoriteService } from "../lib/firestore";
 
 const provider = (id: number, name: string) => ({
@@ -65,5 +65,44 @@ describe("splitProvidersByPreference", () => {
     const { preferred, others } = splitProvidersByPreference(all, services);
 
     assert.equal(preferred.length + others.length, all.length);
+  });
+});
+
+describe("buildProviderDisplayTiers", () => {
+  test("renders a single flat 'Stream' tier when the user has no matching services", () => {
+    const tiers = buildProviderDisplayTiers([], [netflix, prime]);
+
+    assert.deepEqual(tiers, [{ label: "Stream", items: [netflix, prime] }]);
+  });
+
+  test("renders a single flat 'Stream' tier when signed out (preferred always empty)", () => {
+    const tiers = buildProviderDisplayTiers([], [netflix]);
+
+    assert.equal(tiers.length, 1);
+    assert.equal(tiers[0].label, "Stream");
+  });
+
+  test("keeps the 'Your services' heading — not relabeled — when every provider is the user's", () => {
+    const tiers = buildProviderDisplayTiers([netflix, disney], []);
+
+    assert.deepEqual(tiers, [{ label: "Your services", items: [netflix, disney] }]);
+  });
+
+  test("renders both tiers, preferred first, when the split has both", () => {
+    const tiers = buildProviderDisplayTiers([netflix], [prime]);
+
+    assert.deepEqual(tiers, [
+      { label: "Your services", items: [netflix] },
+      { label: "Also available on", items: [prime] },
+    ]);
+  });
+
+  test("never introduces an empty tier", () => {
+    for (const tier of buildProviderDisplayTiers([netflix], [])) {
+      assert.ok(tier.items.length > 0);
+    }
+    for (const tier of buildProviderDisplayTiers([], [prime])) {
+      assert.ok(tier.items.length > 0);
+    }
   });
 });
