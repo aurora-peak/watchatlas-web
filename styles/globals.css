@@ -22,6 +22,12 @@
   --accent-soft: rgba(59, 130, 246, 0.1);
   --gradient-start: #3b82f6;
   --gradient-end: #8b5cf6;
+  /* Rent/Buy tier label colors. Tuned per-theme to clear 4.5:1 contrast
+     against --card (WCAG AA, normal text) while staying recognizably
+     violet/pink — same hue family as --gradient-end and the hardcoded
+     #ec4899 these replace. */
+  --rent: #9063f8;
+  --buy: #ea348f;
 }
 
 /* Light mode */
@@ -37,6 +43,8 @@
   --accent-soft: rgba(37, 99, 235, 0.1);
   --gradient-start: #3b82f6;
   --gradient-end: #8b5cf6;
+  --rent: #7b46f6;
+  --buy: #d01673;
 }
 
 * {

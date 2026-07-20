@@ -339,12 +339,12 @@ export default function DetailsPage() {
                                   <div className="space-y-3">
                                     {tiers.map((tier) => (
                                       <div key={tier.label}>
-                                        <p
+                                        <h5
                                           className="text-xs font-semibold uppercase mb-2"
                                           style={{ color: "var(--accent)" }}
                                         >
                                           {tier.label}
-                                        </p>
+                                        </h5>
                                         <div className="flex flex-wrap gap-2">
                                           {tier.items.map((p: Provider) => (
                                             <div
@@ -374,9 +374,9 @@ export default function DetailsPage() {
 
                               {countryData?.rent?.length > 0 && (
                                 <div>
-                                  <p className="text-xs font-semibold uppercase mb-2" style={{ color: "#8b5cf6" }}>
+                                  <h5 className="text-xs font-semibold uppercase mb-2" style={{ color: "var(--rent)" }}>
                                     Rent
-                                  </p>
+                                  </h5>
                                   <div className="flex flex-wrap gap-2">
                                     {countryData.rent.map((p: Provider) => (
                                       <div
@@ -398,9 +398,9 @@ export default function DetailsPage() {
 
                               {countryData?.buy?.length > 0 && (
                                 <div>
-                                  <p className="text-xs font-semibold uppercase mb-2" style={{ color: "#ec4899" }}>
+                                  <h5 className="text-xs font-semibold uppercase mb-2" style={{ color: "var(--buy)" }}>
                                     Buy
-                                  </p>
+                                  </h5>
                                   <div className="flex flex-wrap gap-2">
                                     {countryData.buy.map((p: Provider) => (
                                       <div
