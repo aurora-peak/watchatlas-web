@@ -17,6 +17,9 @@
   --muted: #737373;
   --accent: #3b82f6;
   --accent-hover: #2563eb;
+  /* Tinted accent wash for selected surfaces. Tracks --accent per theme so
+     selection states stay legible when the theme flips. */
+  --accent-soft: rgba(59, 130, 246, 0.1);
   --gradient-start: #3b82f6;
   --gradient-end: #8b5cf6;
 }
@@ -31,6 +34,7 @@
   --muted: #737373;
   --accent: #2563eb;
   --accent-hover: #1d4ed8;
+  --accent-soft: rgba(37, 99, 235, 0.1);
   --gradient-start: #3b82f6;
   --gradient-end: #8b5cf6;
 }

@@ -3,46 +3,56 @@ import Image from "next/image";
 import { Check, Search, Tv2, X } from "lucide-react";
 import { useAuth } from "@/lib/AuthContext";
 import type { FavoriteService } from "@/lib/preferences";
+import {
+  removeFavoriteService,
+  resolveActiveCountry,
+  toggleFavoriteService,
+} from "@/lib/preferences";
 import type { CatalogProvider } from "@/lib/providerCatalog";
 import { getCountryMeta } from "@/lib/countries";
 
 type LoadState = "idle" | "loading" | "ready" | "error";
 
-export default function ServicePicker() {
-  const { user, preferences, updatePreferences } = useAuth();
-  const favoriteCountries = useMemo(
-    () => preferences?.favoriteCountries ?? [],
-    [preferences?.favoriteCountries]
-  );
+type ServicePickerProps = {
+  // The parent's *live* country selection, not the saved one, so a country
+  // checked a moment ago gets a tab immediately instead of after a save.
+  countries: string[];
+  selected: FavoriteService[];
+  onSelectedChange: (services: FavoriteService[]) => void;
+};
+
+export default function ServicePicker({
+  countries,
+  selected,
+  onSelectedChange,
+}: ServicePickerProps) {
+  const { user } = useAuth();
 
   const [catalog, setCatalog] = useState<CatalogProvider[]>([]);
   const [state, setState] = useState<LoadState>("idle");
   const [activeCountry, setActiveCountry] = useState<string | null>(null);
-  const [selected, setSelected] = useState<FavoriteService[]>([]);
   const [search, setSearch] = useState("");
-  const [saving, setSaving] = useState(false);
   // Bumped by the retry affordance to re-run the catalogue fetch effect.
   const [reloadToken, setReloadToken] = useState(0);
 
-  useEffect(() => {
-    setSelected(preferences?.favoriteServices ?? []);
-  }, [preferences?.favoriteServices]);
+  // The parent rebuilds this array on every toggle, so depend on its contents
+  // rather than its identity to avoid refetching the catalogue needlessly.
+  const countriesKey = countries.join(",");
 
   useEffect(() => {
-    if (favoriteCountries.length === 0) {
+    if (countries.length === 0) {
       setCatalog([]);
       setState("idle");
+      setActiveCountry(null);
       return;
     }
 
-    setActiveCountry((current) =>
-      current && favoriteCountries.includes(current) ? current : favoriteCountries[0]
-    );
+    setActiveCountry((current) => resolveActiveCountry(countries, current));
 
     let cancelled = false;
     setState("loading");
 
-    fetch(`/api/tmdb/providers-list?regions=${favoriteCountries.join(",")}`)
+    fetch(`/api/tmdb/providers-list?regions=${countriesKey}`)
       .then((response) => {
         if (!response.ok) throw new Error(`providers-list responded ${response.status}`);
         return response.json();
@@ -59,7 +69,8 @@ export default function ServicePicker() {
     return () => {
       cancelled = true;
     };
-  }, [favoriteCountries, reloadToken]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [countriesKey, reloadToken]);
 
   const visible = useMemo(() => {
     const term = search.trim().toLowerCase();
@@ -70,24 +81,16 @@ export default function ServicePicker() {
 
   const isSelected = (id: number) => selected.some((service) => service.id === id);
 
-  const toggle = (provider: CatalogProvider) => {
-    setSelected((current) =>
-      current.some((service) => service.id === provider.id)
-        ? current.filter((service) => service.id !== provider.id)
-        : [...current, { id: provider.id, name: provider.name, logoPath: provider.logoPath }]
+  const toggle = (provider: CatalogProvider) =>
+    onSelectedChange(
+      toggleFavoriteService(selected, {
+        id: provider.id,
+        name: provider.name,
+        logoPath: provider.logoPath,
+      })
     );
-  };
 
-  const remove = (id: number) => setSelected((current) => current.filter((s) => s.id !== id));
-
-  const save = async () => {
-    setSaving(true);
-    try {
-      await updatePreferences({ favoriteServices: selected });
-    } finally {
-      setSaving(false);
-    }
-  };
+  const remove = (id: number) => onSelectedChange(removeFavoriteService(selected, id));
 
   if (!user) return null;
 
@@ -101,7 +104,7 @@ export default function ServicePicker() {
         Pick the services you subscribe to. Your choices apply across every country you follow.
       </p>
 
-      {favoriteCountries.length === 0 ? (
+      {countries.length === 0 ? (
         <p className="text-sm" style={{ color: "var(--muted)" }}>
           Choose at least one favorite country above first — the service catalogue depends on it.
         </p>
@@ -116,7 +119,7 @@ export default function ServicePicker() {
                 <span
                   key={service.id}
                   className="flex items-center gap-2 px-3 py-1 rounded-lg text-sm"
-                  style={{ background: "rgba(59, 130, 246, 0.1)" }}
+                  style={{ background: "var(--accent-soft)" }}
                 >
                   {service.name}
                   <button
@@ -131,19 +134,22 @@ export default function ServicePicker() {
             </div>
           )}
 
-          <div role="tablist" aria-label="Countries" className="flex flex-wrap gap-2 mb-4">
-            {favoriteCountries.map((code) => {
+          <div role="group" aria-label="Countries" className="flex flex-wrap gap-2 mb-4">
+            {countries.map((code) => {
               const meta = getCountryMeta(code);
               const active = code === activeCountry;
               return (
                 <button
                   key={code}
-                  role="tab"
-                  aria-selected={active}
+                  type="button"
+                  aria-pressed={active}
                   onClick={() => setActiveCountry(code)}
                   className="px-3 py-2 rounded-lg text-sm"
                   style={{
-                    background: active ? "var(--accent)" : "var(--card)",
+                    // --accent-hover, not --accent: white on --accent is only
+                    // 3.68:1 in the dark theme. --accent-hover gives 5.17:1
+                    // (dark) and 6.70:1 (light), both clearing WCAG AA.
+                    background: active ? "var(--accent-hover)" : "var(--card)",
                     color: active ? "white" : "var(--foreground)",
                     border: "1px solid var(--border)",
                   }}
@@ -195,7 +201,7 @@ export default function ServicePicker() {
                     onClick={() => toggle(provider)}
                     className="rounded-xl p-3 flex flex-col items-center gap-2 transition-colors"
                     style={{
-                      background: chosen ? "rgba(59, 130, 246, 0.1)" : "var(--card)",
+                      background: chosen ? "var(--accent-soft)" : "var(--card)",
                       border: `1px solid ${chosen ? "var(--accent)" : "var(--border)"}`,
                     }}
                   >
@@ -217,10 +223,6 @@ export default function ServicePicker() {
               })}
             </div>
           )}
-
-          <button onClick={save} disabled={saving} className="btn-primary mt-6">
-            {saving ? "Saving..." : `Save Services (${selected.length})`}
-          </button>
         </>
       )}
     </section>

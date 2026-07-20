@@ -1,6 +1,7 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/router";
 import { useAuth } from "@/lib/AuthContext";
+import type { FavoriteService } from "@/lib/preferences";
 import fullCountryList from "@/lib/full_country_list_with_flags.json";
 import { Search, Check, Globe, LogOut, User, Home } from "lucide-react";
 import Link from "next/link";
@@ -24,17 +25,26 @@ declare global {
 export default function SettingsPage() {
   const { user, preferences, updatePreferences, signOut } = useAuth();
   const [selected, setSelected] = useState<string[]>([]);
+  const [selectedServices, setSelectedServices] = useState<FavoriteService[]>([]);
   const [groupedByContinent, setGroupedByContinent] = useState<Record<string, Country[]>>({});
   const [searchTerm, setSearchTerm] = useState("");
   const [saving, setSaving] = useState(false);
+  const [saveError, setSaveError] = useState<string | null>(null);
   const router = useRouter();
 
-  // Initialize from preferences when they load
+  // Hydrate the editable copy from preferences once per signed-in user. A later
+  // refresh of `preferences` (another tab, a background reload) must not
+  // overwrite edits the user has in progress but has not saved yet.
+  const hydratedForUid = useRef<string | null | undefined>(undefined);
+
   useEffect(() => {
-    if (preferences) {
-      setSelected(preferences.favoriteCountries ?? []);
-    }
-  }, [preferences]);
+    if (!preferences) return;
+    const uid = user?.uid ?? null;
+    if (hydratedForUid.current === uid) return;
+    hydratedForUid.current = uid;
+    setSelected(preferences.favoriteCountries ?? []);
+    setSelectedServices(preferences.favoriteServices ?? []);
+  }, [preferences, user]);
 
   // Group countries by continent
   useEffect(() => {
@@ -134,18 +144,24 @@ export default function SettingsPage() {
     };
   }, [user]);
 
+  // One save for both countries and services. Local state is left untouched on
+  // failure so nothing the user picked is lost, and the error is rendered
+  // inline rather than swallowed.
   const handleSave = async () => {
-    if (user) {
-      setSaving(true);
-      try {
-        await updatePreferences({ favoriteCountries: selected });
-        router.push("/");
-      } catch (error) {
-        console.error("Error saving preferences:", error);
-        alert("Failed to save preferences. Please try again.");
-      } finally {
-        setSaving(false);
-      }
+    if (!user) return;
+    setSaving(true);
+    setSaveError(null);
+    try {
+      await updatePreferences({
+        favoriteCountries: selected,
+        favoriteServices: selectedServices,
+      });
+      router.push("/");
+    } catch (error) {
+      console.error("Error saving preferences:", error);
+      setSaveError("Could not save your preferences. Your selections are still here — try again.");
+    } finally {
+      setSaving(false);
     }
   };
 
@@ -321,18 +337,37 @@ export default function SettingsPage() {
           })}
         </div>
 
-        <ServicePicker />
+        <ServicePicker
+          countries={selected}
+          selected={selectedServices}
+          onSelectedChange={setSelectedServices}
+        />
       </div>
 
       {/* Save Button */}
       {user && (
         <div className="sticky bottom-20 pt-4 pb-2" style={{ background: "var(--background)" }}>
+          {saveError && (
+            <p
+              role="alert"
+              className="max-w-md mx-auto mb-3 text-sm rounded-xl px-4 py-3"
+              style={{
+                background: "var(--card)",
+                border: "1px solid var(--border)",
+                color: "var(--foreground)",
+              }}
+            >
+              {saveError}
+            </p>
+          )}
           <button
             onClick={handleSave}
             disabled={saving}
             className="btn-primary w-full max-w-md mx-auto block"
           >
-            {saving ? "Saving..." : `Save Preferences (${selected.length} countries)`}
+            {saving
+              ? "Saving..."
+              : `Save Preferences (${selected.length} countries, ${selectedServices.length} services)`}
           </button>
         </div>
       )}

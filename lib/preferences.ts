@@ -39,6 +39,31 @@ export function normalizePreferences(data: unknown): UserPreferences {
   };
 }
 
+// Selection helpers. ServicePicker is a controlled component, so the list of
+// chosen services lives in the parent page; keeping the transitions pure here
+// means they can be unit tested without rendering React.
+
+export function toggleFavoriteService(
+  services: FavoriteService[],
+  service: FavoriteService
+): FavoriteService[] {
+  return services.some((entry) => entry.id === service.id)
+    ? services.filter((entry) => entry.id !== service.id)
+    : [...services, service];
+}
+
+export function removeFavoriteService(services: FavoriteService[], id: number): FavoriteService[] {
+  return services.filter((entry) => entry.id !== id);
+}
+
+// Keeps the active tab pinned to the user's current choice while it remains
+// valid, and falls back to the first country otherwise, so unchecking the
+// active country does not leave the picker pointing at nothing.
+export function resolveActiveCountry(countries: string[], current: string | null): string | null {
+  if (current && countries.includes(current)) return current;
+  return countries[0] ?? null;
+}
+
 function isFavoriteService(value: unknown): value is { id: number; name: string; logoPath?: unknown } {
   if (typeof value !== "object" || value === null) return false;
   const candidate = value as Record<string, unknown>;
