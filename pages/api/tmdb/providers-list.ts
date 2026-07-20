@@ -39,8 +39,15 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
     const providers = mergeProviderCatalog(payloads, regions);
 
-    // The catalog changes rarely; cache it for a day.
-    res.setHeader("Cache-Control", "s-maxage=86400, stale-while-revalidate");
+    // A complete catalogue changes rarely, so cache it for a day. A degraded one
+    // is missing whichever providers were unique to the failed source, so cache
+    // it briefly instead — otherwise a transient upstream blip hides services
+    // from the picker for 24 hours with no way to bust it.
+    const complete = movieRes.ok && tvRes.ok;
+    res.setHeader(
+      "Cache-Control",
+      complete ? "s-maxage=86400, stale-while-revalidate" : "s-maxage=300, stale-while-revalidate"
+    );
     return res.status(200).json({ providers });
   } catch (error) {
     console.error("TMDB providers-list error:", error);
