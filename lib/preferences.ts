@@ -69,3 +69,36 @@ function isFavoriteService(value: unknown): value is { id: number; name: string;
   const candidate = value as Record<string, unknown>;
   return Number.isFinite(candidate.id) && typeof candidate.name === "string";
 }
+
+// Eligibility + query construction for the "On My Services" home row. Pure so
+// it is unit-testable without booting Firebase or React. `user` is typed
+// structurally (just enough to know "signed in or not") rather than importing
+// Firebase's `User` type, keeping this module dependency-free; a real
+// firebase/auth `User` satisfies this shape.
+//
+// `favoriteCountries` is not content-validated by normalizePreferences (it
+// only checks Array.isArray), so a malformed Firestore value containing "&"
+// or "#" must not be allowed to mangle the query string — hence
+// encodeURIComponent around the joined region/provider lists rather than
+// around each element (the delimiter itself needs to survive being embedded
+// in the query value and round-trip through Next's automatic query decoding).
+//
+// Does not cap the region count: pages/api/tmdb/discover.ts already caps at
+// MAX_DISCOVER_REGIONS server-side, so duplicating the cap here would just be
+// two sources of truth for the same limit.
+export function buildDiscoverQuery(
+  user: { uid: string } | null | undefined,
+  preferences: Pick<UserPreferences, "favoriteCountries" | "favoriteServices"> | null | undefined
+): string | null {
+  if (!user) return null;
+
+  const countries = preferences?.favoriteCountries ?? [];
+  const services = preferences?.favoriteServices ?? [];
+
+  if (countries.length === 0 || services.length === 0) return null;
+
+  const regions = encodeURIComponent(countries.join(","));
+  const providers = encodeURIComponent(services.map((service) => service.id).join("|"));
+
+  return `/api/tmdb/discover?regions=${regions}&providers=${providers}`;
+}

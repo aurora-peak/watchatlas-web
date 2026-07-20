@@ -1,6 +1,7 @@
 import { test, describe } from "node:test";
 import assert from "node:assert/strict";
 import {
+  buildDiscoverQuery,
   normalizePreferences,
   removeFavoriteService,
   resolveActiveCountry,
@@ -118,5 +119,58 @@ describe("resolveActiveCountry", () => {
     // The picker derives tabs from live local state, so a country checked a
     // moment ago must resolve without waiting for a save round trip.
     assert.equal(resolveActiveCountry(["US", "JP"], "JP"), "JP");
+  });
+});
+
+const SIGNED_IN_USER = { uid: "user-123" };
+
+describe("buildDiscoverQuery", () => {
+  test("returns null when signed out, regardless of preferences", () => {
+    assert.equal(
+      buildDiscoverQuery(null, { favoriteCountries: ["US"], favoriteServices: [NETFLIX] }),
+      null
+    );
+  });
+
+  test("returns null when there are no favorite countries", () => {
+    assert.equal(
+      buildDiscoverQuery(SIGNED_IN_USER, { favoriteCountries: [], favoriteServices: [NETFLIX] }),
+      null
+    );
+  });
+
+  test("returns null when there are no favorite services", () => {
+    assert.equal(
+      buildDiscoverQuery(SIGNED_IN_USER, { favoriteCountries: ["US"], favoriteServices: [] }),
+      null
+    );
+  });
+
+  test("builds the discover path for the happy path", () => {
+    const query = buildDiscoverQuery(SIGNED_IN_USER, {
+      favoriteCountries: ["US", "GB"],
+      favoriteServices: [NETFLIX, DISNEY],
+    });
+
+    assert.equal(query, "/api/tmdb/discover?regions=US%2CGB&providers=8%7C337");
+  });
+
+  test("encodes a country value containing an ampersand rather than letting it mangle the query string", () => {
+    const query = buildDiscoverQuery(SIGNED_IN_USER, {
+      favoriteCountries: ["US&evil=1"],
+      favoriteServices: [NETFLIX],
+    });
+
+    assert.equal(query, "/api/tmdb/discover?regions=US%26evil%3D1&providers=8");
+  });
+
+  test("does not cap the region count client-side (the discover API caps server-side)", () => {
+    const manyCountries = ["US", "GB", "CA", "AU", "DE", "FR"];
+    const query = buildDiscoverQuery(SIGNED_IN_USER, {
+      favoriteCountries: manyCountries,
+      favoriteServices: [NETFLIX],
+    });
+
+    assert.equal(query, `/api/tmdb/discover?regions=${encodeURIComponent(manyCountries.join(","))}&providers=8`);
   });
 });

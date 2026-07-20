@@ -6,6 +6,7 @@ import Link from "next/link";
 import ShowCard from "@/components/ShowCard";
 import { tmdbService, searchTMDBAll, TMDBResult, getPosterUrl } from "@/lib/tmdb";
 import { useAuth } from "@/lib/AuthContext";
+import { buildDiscoverQuery } from "@/lib/preferences";
 
 export default function HomePage() {
   const router = useRouter();
@@ -66,19 +67,16 @@ export default function HomePage() {
   // signed out, has no services, or the request fails, the row simply does not
   // render — the home page never shows an error for it.
   useEffect(() => {
-    const countries = preferences?.favoriteCountries ?? [];
-    const services = preferences?.favoriteServices ?? [];
+    const query = buildDiscoverQuery(user, preferences);
 
-    if (!user || countries.length === 0 || services.length === 0) {
+    if (!query) {
       setOnMyServices([]);
       return;
     }
 
     let cancelled = false;
-    const regions = countries.join(",");
-    const providers = services.map((service) => service.id).join("|");
 
-    fetch(`/api/tmdb/discover?regions=${regions}&providers=${providers}`)
+    fetch(query)
       .then((response) => (response.ok ? response.json() : Promise.reject(response.status)))
       .then((data: { results: TMDBResult[] }) => {
         if (!cancelled) setOnMyServices(data.results ?? []);
@@ -224,7 +222,7 @@ export default function HomePage() {
       <div className="media-row">
         <div className="scroll-container flex gap-4 overflow-x-auto pb-4">
           {items.map((item) => (
-            <ShowCard key={item.id} result={item} />
+            <ShowCard key={`${item.media_type}:${item.id}`} result={item} />
           ))}
         </div>
       </div>
