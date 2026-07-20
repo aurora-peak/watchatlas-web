@@ -1,10 +1,11 @@
 import { useState, useRef, useEffect, useCallback } from "react";
 import { useRouter } from "next/router";
-import { Search, X, Film, Tv, TrendingUp, Star, Clock, Play } from "lucide-react";
+import { Search, X, Film, Tv, TrendingUp, Star, Clock, Play, Sparkles } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
 import ShowCard from "@/components/ShowCard";
 import { tmdbService, searchTMDBAll, TMDBResult, getPosterUrl } from "@/lib/tmdb";
+import { useAuth } from "@/lib/AuthContext";
 
 export default function HomePage() {
   const router = useRouter();
@@ -13,7 +14,7 @@ export default function HomePage() {
   const [searchInput, setSearchInput] = useState("");
   const [results, setResults] = useState<TMDBResult[] | null>(null);
   const [loadingSearch, setLoadingSearch] = useState(false);
-  
+
   const [suggestions, setSuggestions] = useState<TMDBResult[]>([]);
   const [showSuggestions, setShowSuggestions] = useState(false);
   const [filterMovies, setFilterMovies] = useState(true);
@@ -30,6 +31,9 @@ export default function HomePage() {
   const [upcomingMovies, setUpcomingMovies] = useState<TMDBResult[]>([]);
   const [nowPlayingMovies, setNowPlayingMovies] = useState<TMDBResult[]>([]);
   const [loadingBrowse, setLoadingBrowse] = useState(true);
+
+  const { user, preferences } = useAuth();
+  const [onMyServices, setOnMyServices] = useState<TMDBResult[]>([]);
 
   // Load browse lists on mount
   useEffect(() => {
@@ -57,6 +61,36 @@ export default function HomePage() {
     };
     loadBrowse();
   }, []);
+
+  // Personalized row. Deliberately silent on every failure path: if the user is
+  // signed out, has no services, or the request fails, the row simply does not
+  // render — the home page never shows an error for it.
+  useEffect(() => {
+    const countries = preferences?.favoriteCountries ?? [];
+    const services = preferences?.favoriteServices ?? [];
+
+    if (!user || countries.length === 0 || services.length === 0) {
+      setOnMyServices([]);
+      return;
+    }
+
+    let cancelled = false;
+    const regions = countries.join(",");
+    const providers = services.map((service) => service.id).join("|");
+
+    fetch(`/api/tmdb/discover?regions=${regions}&providers=${providers}`)
+      .then((response) => (response.ok ? response.json() : Promise.reject(response.status)))
+      .then((data: { results: TMDBResult[] }) => {
+        if (!cancelled) setOnMyServices(data.results ?? []);
+      })
+      .catch(() => {
+        if (!cancelled) setOnMyServices([]);
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [user, preferences?.favoriteCountries, preferences?.favoriteServices]);
 
   // Initialize filters from URL
   useEffect(() => {
@@ -375,6 +409,13 @@ export default function HomePage() {
               </>
             ) : (
               <>
+                {onMyServices.length > 0 && (
+                  <MediaRow
+                    title="On My Services"
+                    icon={<Sparkles size={24} style={{ color: "var(--accent)" }} />}
+                    items={onMyServices}
+                  />
+                )}
                 <MediaRow title="Trending Movies" icon={<TrendingUp size={24} style={{ color: "var(--accent)" }} />} items={trendingMovies} />
                 <MediaRow title="Trending TV Shows" icon={<TrendingUp size={24} style={{ color: "#8b5cf6" }} />} items={trendingTV} />
                 <MediaRow title="Now Playing" icon={<Play size={24} style={{ color: "#10b981" }} />} items={nowPlayingMovies} />
