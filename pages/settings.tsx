@@ -318,7 +318,7 @@ export default function SettingsPage() {
                         onClick={() => toggleCountry(country.code)}
                         className="w-full flex items-center justify-between px-3 py-2 rounded-lg text-left transition-colors"
                         style={{
-                          background: isSelected ? "rgba(59, 130, 246, 0.1)" : "transparent",
+                          background: isSelected ? "var(--accent-soft)" : "transparent",
                         }}
                       >
                         <span className="flex items-center gap-2">
