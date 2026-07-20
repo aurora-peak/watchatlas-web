@@ -102,4 +102,24 @@ describe("mergeProviderCatalog", () => {
     assert.deepEqual(merged[0].regions, ["US"]);
     assert.equal(merged[0].displayPriority, 1);
   });
+
+  test("takes the best priority across catalogues, regardless of their order", () => {
+    // TMDB ranks the same provider independently for movies and TV.
+    const movieNetflix = { ...netflix, display_priorities: { US: 50 } };
+    const tvNetflix = { ...netflix, display_priorities: { US: 5, GB: 3 } };
+
+    const movieFirst = mergeProviderCatalog(
+      [{ results: [movieNetflix] }, { results: [tvNetflix] }],
+      ["US", "GB"]
+    );
+    const tvFirst = mergeProviderCatalog(
+      [{ results: [tvNetflix] }, { results: [movieNetflix] }],
+      ["US", "GB"]
+    );
+
+    assert.equal(movieFirst[0].displayPriority, 3);
+    assert.equal(tvFirst[0].displayPriority, 3);
+    assert.deepEqual(movieFirst[0].regions.sort(), ["GB", "US"]);
+    assert.deepEqual(tvFirst[0].regions.sort(), ["GB", "US"]);
+  });
 });

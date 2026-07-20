@@ -58,9 +58,11 @@ export function mergeProviderCatalog(
 
       const existing = byId.get(provider.provider_id);
       if (existing) {
-        // The same provider appears in both the movie and TV catalogs; union
-        // their regions rather than letting whichever arrived last win.
+        // The same provider appears in both the movie and TV catalogues; union
+        // their regions and take the best priority across both, so the result
+        // does not depend on which catalogue was processed first.
         existing.regions = [...new Set([...existing.regions, ...available])];
+        existing.displayPriority = Math.min(existing.displayPriority, priorityFor(provider, available));
         continue;
       }
 
