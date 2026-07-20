@@ -7,7 +7,11 @@ import { useAuth } from "@/lib/AuthContext";
 import { getPosterUrl } from "@/lib/tmdb";
 import { getCountryMeta } from "@/lib/countries";
 import { getDisplayCountries } from "@/lib/getDisplayCountries";
-import { splitProvidersByPreference, buildProviderDisplayTiers } from "@/lib/providerPreferences";
+import {
+  splitProvidersByPreference,
+  buildProviderDisplayTiers,
+  collectStreamingProviders,
+} from "@/lib/providerPreferences";
 import { ArrowLeft, Star, Calendar, ExternalLink, ChevronDown } from "lucide-react";
 
 type Provider = {
@@ -311,6 +315,11 @@ export default function DetailsPage() {
                     {codes.map((code) => {
                       const countryData = providers[code];
                       const countryMeta = getCountryMeta(code);
+                      // flatrate + free + ads, deduped — the same definition of
+                      // "streaming" that /api/tmdb/discover queries, so a title
+                      // surfaced by the "On My Services" row shows the provider
+                      // that put it there.
+                      const streaming = collectStreamingProviders<Provider>(countryData);
 
                       return (
                         <div
@@ -322,15 +331,15 @@ export default function DetailsPage() {
                             {countryMeta?.flag} {countryMeta?.name || code}
                           </h4>
 
-                          {!(countryData?.flatrate?.length || countryData?.rent?.length || countryData?.buy?.length) ? (
+                          {!(streaming.length || countryData?.rent?.length || countryData?.buy?.length) ? (
                             <p className="text-sm" style={{ color: "var(--muted)" }}>
                               No availability found.
                             </p>
                           ) : (
                             <div className="space-y-4">
-                              {countryData?.flatrate?.length > 0 && (() => {
+                              {streaming.length > 0 && (() => {
                                 const { preferred, others } = splitProvidersByPreference(
-                                  countryData.flatrate as Provider[],
+                                  streaming,
                                   favoriteServices
                                 );
                                 const tiers = buildProviderDisplayTiers(preferred, others);
@@ -348,11 +357,11 @@ export default function DetailsPage() {
                                         <div className="flex flex-wrap gap-2">
                                           {tier.items.map((p: Provider) => (
                                             <div
-                                              key={p.provider_name}
+                                              key={p.provider_id}
                                               className="relative w-10 h-10 rounded-lg overflow-hidden"
                                               title={p.provider_name}
                                               style={
-                                                tier.label === "Your services"
+                                                tier.preferred
                                                   ? { boxShadow: "0 0 0 2px var(--accent)" }
                                                   : undefined
                                               }

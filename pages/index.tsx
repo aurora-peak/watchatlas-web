@@ -383,7 +383,7 @@ export default function HomePage() {
             ) : results && results.length > 0 ? (
               <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4">
                 {results.map((r) => (
-                  <ShowCard key={r.id} result={r} />
+                  <ShowCard key={`${r.media_type}:${r.id}`} result={r} />
                 ))}
               </div>
             ) : results && results.length === 0 ? (

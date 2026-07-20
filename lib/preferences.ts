@@ -33,7 +33,9 @@ export function normalizePreferences(data: unknown): UserPreferences {
     : [];
 
   return {
-    favoriteCountries: Array.isArray(record.favoriteCountries) ? record.favoriteCountries : [],
+    favoriteCountries: Array.isArray(record.favoriteCountries)
+      ? record.favoriteCountries.filter((code): code is string => typeof code === "string")
+      : [],
     darkMode: typeof record.darkMode === "boolean" ? record.darkMode : true,
     favoriteServices,
   };
@@ -76,9 +78,10 @@ function isFavoriteService(value: unknown): value is { id: number; name: string;
 // Firebase's `User` type, keeping this module dependency-free; a real
 // firebase/auth `User` satisfies this shape.
 //
-// `favoriteCountries` is not content-validated by normalizePreferences (it
-// only checks Array.isArray), so a malformed Firestore value containing "&"
-// or "#" must not be allowed to mangle the query string — hence
+// `favoriteCountries` is only type-validated by normalizePreferences (entries
+// are guaranteed to be strings, but not to be real region codes), so a
+// malformed Firestore value containing "&" or "#" must not be allowed to
+// mangle the query string — hence
 // encodeURIComponent around the joined region/provider lists rather than
 // around each element (the delimiter itself needs to survive being embedded
 // in the query value and round-trip through Next's automatic query decoding).

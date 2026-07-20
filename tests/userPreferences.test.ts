@@ -47,6 +47,25 @@ describe("normalizePreferences", () => {
     assert.equal(prefs.darkMode, true);
   });
 
+  test("coerces a non-array favoriteCountries to empty", () => {
+    assert.deepEqual(normalizePreferences({ favoriteCountries: "US" }).favoriteCountries, []);
+    assert.deepEqual(normalizePreferences({ favoriteCountries: null }).favoriteCountries, []);
+  });
+
+  test("drops non-string entries from favoriteCountries", () => {
+    const prefs = normalizePreferences({
+      favoriteCountries: ["US", 42, null, undefined, { code: "GB" }, ["FR"], "JP"],
+    });
+
+    assert.deepEqual(prefs.favoriteCountries, ["US", "JP"]);
+  });
+
+  test("keeps every entry when favoriteCountries is already all strings", () => {
+    const prefs = normalizePreferences({ favoriteCountries: ["US", "GB", ""] });
+
+    assert.deepEqual(prefs.favoriteCountries, ["US", "GB", ""]);
+  });
+
   test("tolerates a missing logoPath by defaulting it to empty string", () => {
     const prefs = normalizePreferences({ favoriteServices: [{ id: 8, name: "Netflix" }] });
 

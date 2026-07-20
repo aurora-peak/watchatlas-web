@@ -39,6 +39,20 @@ export function parseProviderIds(raw: unknown): number[] | null {
  * Merges one results page per region per media type into a single ranked list.
  * Pages from failed calls arrive empty, so a partial outage degrades the list
  * rather than failing the request.
+ *
+ * INVARIANT: cross-page duplicates are resolved first-seen-wins, keeping one
+ * page's copy of the item wholesale. That is only correct while every page is
+ * fetched with request params that cannot change an item's own field values —
+ * today `pages/api/tmdb/discover.ts` varies only `watch_region` and the media
+ * type, both of which change *which* items come back, not what each one says.
+ *
+ * Adding TMDB's `region` or `language` params to those calls would break this:
+ * `region` changes `release_date` per page and `language` changes `title` /
+ * `name` / `overview`, so first-seen-wins would silently pin whichever region
+ * or locale happened to be fetched first. If either param is ever added, this
+ * function must merge fields deterministically instead of keeping the first
+ * copy. Nothing enforces the invariant mechanically — it lives here and in the
+ * discover route.
  */
 export function mergeDiscoverResults(pages: DiscoverItem[][]): DiscoverItem[] {
   const byKey = new Map<string, DiscoverItem>();

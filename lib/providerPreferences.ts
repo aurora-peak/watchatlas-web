@@ -12,6 +12,81 @@ export type ProviderTiers<T> = {
 };
 
 /**
+ * The subset of a TMDB watch/providers country entry that counts as
+ * "streaming". `rent`/`buy` are deliberately absent: purchase tiers are never
+ * fed through the preference split, because a "your services" framing on a
+ * transaction reads as an endorsement of buying it there.
+ */
+export type CountryStreamingProviders<T extends WatchProvider = WatchProvider> = {
+  flatrate?: T[] | null;
+  free?: T[] | null;
+  ads?: T[] | null;
+};
+
+const STREAMING_KEYS = ["flatrate", "free", "ads"] as const;
+
+/**
+ * Picks the canonical record for two entries that share a provider_id.
+ *
+ * Deliberately commutative: pickCanonical(a, b) === pickCanonical(b, a) for
+ * every input, so the result does not depend on which array TMDB happened to
+ * list the provider in first. A first-seen-wins rule here would silently
+ * freeze whichever copy arrived first — the exact defect that shipped once
+ * already on this branch.
+ */
+function pickCanonical<T extends WatchProvider>(a: T, b: T): T {
+  const aHasLogo = Boolean(a.logo_path);
+  const bHasLogo = Boolean(b.logo_path);
+  if (aHasLogo !== bHasLogo) return aHasLogo ? a : b;
+
+  if (a.provider_name !== b.provider_name) {
+    return a.provider_name < b.provider_name ? a : b;
+  }
+  if (a.logo_path !== b.logo_path) {
+    return (a.logo_path ?? "") < (b.logo_path ?? "") ? a : b;
+  }
+  return a;
+}
+
+/**
+ * Flattens the streaming-eligible tiers of a country entry into one list.
+ *
+ * TMDB splits subscription (`flatrate`), free (`free`) and ad-supported (`ads`)
+ * availability into separate arrays, and the same provider can appear in more
+ * than one. `pages/api/tmdb/discover.ts` queries all three, so the detail page
+ * must read all three too — otherwise a title surfaced in the "On My Services"
+ * row because it is free on Tubi shows no Tubi entry when opened, which both
+ * breaks the feature for free/ad-supported subscribers and hides a provider
+ * that is present in the payload.
+ *
+ * Output order is first appearance across flatrate → free → ads; duplicate
+ * records are resolved by `pickCanonical`, which is order-independent.
+ */
+export function collectStreamingProviders<T extends WatchProvider>(
+  country: CountryStreamingProviders<T> | null | undefined
+): T[] {
+  const order: number[] = [];
+  const byId = new Map<number, T>();
+
+  for (const key of STREAMING_KEYS) {
+    const list = country?.[key];
+    if (!Array.isArray(list)) continue;
+
+    for (const provider of list) {
+      const existing = byId.get(provider.provider_id);
+      if (existing === undefined) {
+        order.push(provider.provider_id);
+        byId.set(provider.provider_id, provider);
+      } else {
+        byId.set(provider.provider_id, pickCanonical(existing, provider));
+      }
+    }
+  }
+
+  return order.map((id) => byId.get(id) as T);
+}
+
+/**
  * Groups a country's providers into the user's own services first, then the
  * rest. This only ever reorders: every input provider appears in exactly one
  * tier, so nothing is hidden from the user.
@@ -38,6 +113,12 @@ export function splitProvidersByPreference<T extends WatchProvider>(
 
 export type ProviderDisplayTier<T> = {
   label: string;
+  /**
+   * True when `items` are the user's own services. Callers branch on this to
+   * decide highlighting — never on `label`, which is display copy and can be
+   * reworded without any type error or failing test.
+   */
+  preferred: boolean;
   items: T[];
 };
 
@@ -53,13 +134,13 @@ export function buildProviderDisplayTiers<T extends WatchProvider>(
   others: T[]
 ): ProviderDisplayTier<T>[] {
   if (preferred.length === 0) {
-    return [{ label: "Stream", items: others }];
+    return [{ label: "Stream", preferred: false, items: others }];
   }
   if (others.length === 0) {
-    return [{ label: "Your services", items: preferred }];
+    return [{ label: "Your services", preferred: true, items: preferred }];
   }
   return [
-    { label: "Your services", items: preferred },
-    { label: "Also available on", items: others },
+    { label: "Your services", preferred: true, items: preferred },
+    { label: "Also available on", preferred: false, items: others },
   ];
 }

@@ -52,7 +52,10 @@ export default function ServicePicker({
     let cancelled = false;
     setState("loading");
 
-    fetch(`/api/tmdb/providers-list?regions=${countriesKey}`)
+    // encodeURIComponent for the same reason buildDiscoverQuery does it: the
+    // country codes come from an untrusted Firestore document, so a value
+    // containing "&" or "#" must not be able to mangle the query string.
+    fetch(`/api/tmdb/providers-list?regions=${encodeURIComponent(countriesKey)}`)
       .then((response) => {
         if (!response.ok) throw new Error(`providers-list responded ${response.status}`);
         return response.json();
