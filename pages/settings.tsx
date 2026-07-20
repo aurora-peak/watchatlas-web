@@ -6,6 +6,7 @@ import { Search, Check, Globe, LogOut, User, Home } from "lucide-react";
 import Link from "next/link";
 import { GoogleAuthProvider, signInWithCredential } from "firebase/auth";
 import { auth } from "@/lib/firebase";
+import ServicePicker from "@/components/ServicePicker";
 
 type Country = {
   code: string;
@@ -319,6 +320,8 @@ export default function SettingsPage() {
             );
           })}
         </div>
+
+        <ServicePicker />
       </div>
 
       {/* Save Button */}
