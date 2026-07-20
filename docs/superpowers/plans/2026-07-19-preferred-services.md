@@ -635,6 +635,8 @@ export default function ServicePicker() {
   const [selected, setSelected] = useState<FavoriteService[]>([]);
   const [search, setSearch] = useState("");
   const [saving, setSaving] = useState(false);
+  // Bumped by the retry affordance to re-run the catalogue fetch effect.
+  const [reloadToken, setReloadToken] = useState(0);
 
   useEffect(() => {
     setSelected(preferences?.favoriteServices ?? []);
@@ -671,7 +673,7 @@ export default function ServicePicker() {
     return () => {
       cancelled = true;
     };
-  }, [favoriteCountries]);
+  }, [favoriteCountries, reloadToken]);
 
   const visible = useMemo(() => {
     const term = search.trim().toLowerCase();
@@ -785,7 +787,9 @@ export default function ServicePicker() {
           {state === "error" && (
             <p className="text-sm" style={{ color: "var(--muted)" }}>
               Could not load the service catalogue.{" "}
-              <button onClick={() => setSearch((s) => s)} className="underline">Retry</button>
+              <button onClick={() => setReloadToken((token) => token + 1)} className="underline">
+                Retry
+              </button>
             </p>
           )}
 
@@ -1563,15 +1567,20 @@ Replace the whole `{countryData?.flatrate?.length > 0 && ( ... )}` expression wi
                                   favoriteServices
                                 );
 
-                                // Degenerate cases render exactly as before: one
-                                // flat "Stream" list with no sub-headings.
+                                // None of the user's services here (or signed
+                                // out) renders exactly as before: one flat
+                                // "Stream" list. When every provider is one of
+                                // theirs, keep the "Your services" heading and
+                                // drop the empty "Also available on" tier.
                                 const tiers =
-                                  preferred.length === 0 || others.length === 0
-                                    ? [{ label: "Stream", items: preferred.length > 0 ? preferred : others }]
-                                    : [
-                                        { label: "Your services", items: preferred },
-                                        { label: "Also available on", items: others },
-                                      ];
+                                  preferred.length === 0
+                                    ? [{ label: "Stream", items: others }]
+                                    : others.length === 0
+                                      ? [{ label: "Your services", items: preferred }]
+                                      : [
+                                          { label: "Your services", items: preferred },
+                                          { label: "Also available on", items: others },
+                                        ];
 
                                 return (
                                   <div className="space-y-3">
