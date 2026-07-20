@@ -77,6 +77,29 @@ describe("collectStreamingProviders", () => {
     assert.deepEqual(collectStreamingProviders({ flatrate: [b], free: [a] }), [a]);
   });
 
+  test("stays symmetric across the falsy logo_path spellings — null, undefined and empty string", () => {
+    // logo_path is typed string | null, but a payload missing the key yields
+    // undefined and "" is a third spelling of "no logo". All three are equally
+    // logo-less, so swapping the tiers must not change the rendered record.
+    const spellings = [
+      { provider_id: 73, provider_name: "Tubi", logo_path: null },
+      { provider_id: 73, provider_name: "Tubi", logo_path: undefined },
+      { provider_id: 73, provider_name: "Tubi", logo_path: "" },
+    ] as unknown as { provider_id: number; provider_name: string; logo_path: string | null }[];
+
+    for (const a of spellings) {
+      for (const b of spellings) {
+        const forward = collectStreamingProviders({ flatrate: [a], free: [b] });
+        const reversed = collectStreamingProviders({ flatrate: [b], free: [a] });
+
+        assert.equal(forward.length, 1);
+        assert.equal(reversed.length, 1);
+        assert.equal(forward[0].provider_name, reversed[0].provider_name);
+        assert.equal(forward[0].logo_path ?? "", reversed[0].logo_path ?? "");
+      }
+    }
+  });
+
   test("ignores missing, null and non-array tiers", () => {
     assert.deepEqual(collectStreamingProviders(null), []);
     assert.deepEqual(collectStreamingProviders(undefined), []);

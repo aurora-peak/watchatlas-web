@@ -28,23 +28,31 @@ const STREAMING_KEYS = ["flatrate", "free", "ads"] as const;
 /**
  * Picks the canonical record for two entries that share a provider_id.
  *
- * Deliberately commutative: pickCanonical(a, b) === pickCanonical(b, a) for
- * every input, so the result does not depend on which array TMDB happened to
- * list the provider in first. A first-seen-wins rule here would silently
- * freeze whichever copy arrived first — the exact defect that shipped once
- * already on this branch.
+ * Commutative up to WatchProvider-field equality: swapping the arguments picks
+ * a record with the same provider_id, provider_name and effective logo_path, so
+ * the result does not depend on which array TMDB happened to list the provider
+ * in first. A first-seen-wins rule here would silently freeze whichever copy
+ * arrived first — the exact defect that shipped once already on this branch.
+ *
+ * It returns one record whole rather than merging field-wise, so that guarantee
+ * covers the WatchProvider fields only. A caller whose T carries extra fields
+ * that differ between tiers would see one tier's values win arbitrarily. No
+ * caller does today; revisit this if one starts to.
  */
 function pickCanonical<T extends WatchProvider>(a: T, b: T): T {
-  const aHasLogo = Boolean(a.logo_path);
-  const bHasLogo = Boolean(b.logo_path);
-  if (aHasLogo !== bHasLogo) return aHasLogo ? a : b;
+  // Normalize first: logo_path is typed string | null, but a TMDB payload
+  // missing the key yields undefined, and "" is a third falsy spelling of the
+  // same thing. Comparing the raw values would let null/undefined/"" tie on the
+  // Boolean check and then fall through to a strict !== that is true while the
+  // normalized comparison is false — which always returned b, breaking symmetry.
+  const aLogo = a.logo_path ?? "";
+  const bLogo = b.logo_path ?? "";
 
+  if (Boolean(aLogo) !== Boolean(bLogo)) return aLogo ? a : b;
   if (a.provider_name !== b.provider_name) {
     return a.provider_name < b.provider_name ? a : b;
   }
-  if (a.logo_path !== b.logo_path) {
-    return (a.logo_path ?? "") < (b.logo_path ?? "") ? a : b;
-  }
+  if (aLogo !== bLogo) return aLogo < bLogo ? a : b;
   return a;
 }
 
