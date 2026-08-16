@@ -65,6 +65,7 @@ The client never calls TMDB directly. `lib/tmdb.ts` → `/api/tmdb/*` → `api.t
 
 - Google Identity Services (GSI) script loaded imperatively in `pages/settings.tsx`; credential exchanged via Firebase `signInWithCredential`.
 - `lib/AuthContext.tsx` subscribes to `onAuthStateChanged`; exposes `user`, `preferences`, `signOut`, `updatePreferences`, `refreshPreferences`.
+- `lib/preferences.ts` owns the `FavoriteService` and `UserPreferences` types plus pure normalization and selection helpers; `lib/firestore.ts` imports that model and remains a persistence adapter rather than re-exporting it.
 - Firestore stores `users/{uid}` → `{ favoriteCountries: string[], favoriteServices: FavoriteService[], darkMode: boolean }` via `setDoc(..., { merge: true })` with a 10s timeout wrapper. Note the **named** Firestore database: `getFirestore(app, "watchatlaspreference")`.
 - `favoriteServices` is a flat global set of TMDB provider IDs (`{ id, name, logoPath }`), applied across every favorite country rather than mapped per country. `normalizePreferences` in `lib/preferences.ts` hardens whatever Firestore returns before the app sees it.
 
