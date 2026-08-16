@@ -1,4 +1,4 @@
-import type { FavoriteService } from "./firestore";
+import type { FavoriteService } from "./preferences";
 
 export type WatchProvider = {
   provider_id: number;
