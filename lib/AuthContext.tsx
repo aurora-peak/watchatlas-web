@@ -105,10 +105,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         favoriteServices: prev?.favoriteServices ?? [],
         ...prefs,
       }));
+      // Signed-out preferences belong to nobody. Stated rather than assumed, so
+      // a stale uid can never outlive the identity it came from.
+      setPreferencesUid(null);
       return;
     }
 
     await saveUserPreferences(user.uid, prefs);
+
+    // Same ordering guard as onAuthStateChanged and refreshPreferences: if the
+    // session ended while this write was in flight, publishing now would push
+    // the previous identity's preferences into a signed-out context.
+    if (latestUid.current !== user.uid) return;
 
     // Update local state
     setPreferences((prev) => ({
