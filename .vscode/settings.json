@@ -1,0 +1,5 @@
+{
+    "prReview.ai.provider": "openai-compatible",
+    "prReview.ai.endpoint": "https://api.openai.com/v1",
+    "prReview.ai.model": "gpt-4o-mini"
+}
