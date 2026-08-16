@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/router";
 import { useAuth } from "@/lib/AuthContext";
 import type { FavoriteService } from "@/lib/preferences";
+import { resolveHydrationAction } from "@/lib/preferences";
 import fullCountryList from "@/lib/full_country_list_with_flags.json";
 import { Search, Check, Globe, LogOut, User, Home } from "lucide-react";
 import Link from "next/link";
@@ -23,7 +24,7 @@ declare global {
 }
 
 export default function SettingsPage() {
-  const { user, preferences, updatePreferences, signOut } = useAuth();
+  const { user, preferences, preferencesUid, updatePreferences, signOut } = useAuth();
   const [selected, setSelected] = useState<string[]>([]);
   const [selectedServices, setSelectedServices] = useState<FavoriteService[]>([]);
   const [groupedByContinent, setGroupedByContinent] = useState<Record<string, Country[]>>({});
@@ -34,17 +35,30 @@ export default function SettingsPage() {
 
   // Hydrate the editable copy from preferences once per signed-in user. A later
   // refresh of `preferences` (another tab, a background reload) must not
-  // overwrite edits the user has in progress but has not saved yet.
+  // overwrite edits the user has in progress but has not saved yet — and
+  // preferences belonging to a different identity must never be hydrated at
+  // all, or Save writes them back under the wrong uid.
   const hydratedForUid = useRef<string | null | undefined>(undefined);
 
   useEffect(() => {
-    if (!preferences) return;
     const uid = user?.uid ?? null;
-    if (hydratedForUid.current === uid) return;
+    const action = resolveHydrationAction({
+      userUid: uid,
+      preferencesUid,
+      hasPreferences: Boolean(preferences),
+      hydratedForUid: hydratedForUid.current,
+    });
+
+    if (action === "reset") {
+      hydratedForUid.current = undefined;
+      return;
+    }
+    if (action === "skip") return;
+
     hydratedForUid.current = uid;
-    setSelected(preferences.favoriteCountries ?? []);
-    setSelectedServices(preferences.favoriteServices ?? []);
-  }, [preferences, user]);
+    setSelected(preferences!.favoriteCountries ?? []);
+    setSelectedServices(preferences!.favoriteServices ?? []);
+  }, [preferences, preferencesUid, user]);
 
   // Group countries by continent
   useEffect(() => {

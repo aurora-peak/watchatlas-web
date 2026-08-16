@@ -5,6 +5,7 @@ import {
   normalizePreferences,
   removeFavoriteService,
   resolveActiveCountry,
+  resolveHydrationAction,
   toggleFavoriteService,
 } from "../lib/preferences";
 
@@ -191,5 +192,82 @@ describe("buildDiscoverQuery", () => {
     });
 
     assert.equal(query, `/api/tmdb/discover?regions=${encodeURIComponent(manyCountries.join(","))}&providers=8`);
+  });
+});
+
+describe("resolveHydrationAction", () => {
+  const base = {
+    userUid: "user-a" as string | null,
+    preferencesUid: "user-a" as string | null,
+    hasPreferences: true,
+    hydratedForUid: undefined as string | null | undefined,
+  };
+
+  test("hydrates when the preferences belong to the signed-in user", () => {
+    assert.equal(resolveHydrationAction(base), "hydrate");
+  });
+
+  test("skips once hydrated, so in-progress edits survive a preferences refresh", () => {
+    assert.equal(
+      resolveHydrationAction({ ...base, hydratedForUid: "user-a" }),
+      "skip"
+    );
+  });
+
+  // The data-loss case: AuthContext publishes `user` before awaiting the
+  // preference load, so one render pairs a signed-in uid with the signed-out
+  // preferences object the theme toggle left behind. Hydrating there would
+  // latch empty arrays and Save would write them back to Firestore.
+  test("refuses to hydrate a signed-in user from signed-out preferences", () => {
+    assert.equal(
+      resolveHydrationAction({ ...base, preferencesUid: null }),
+      "reset"
+    );
+  });
+
+  // The cross-user case: switching accounts must never let user A's stored
+  // selections be written into user B's document.
+  test("refuses to hydrate one user from another user's preferences", () => {
+    assert.equal(
+      resolveHydrationAction({ ...base, userUid: "user-b", preferencesUid: "user-a" }),
+      "reset"
+    );
+  });
+
+  test("resets when there are no preferences to hydrate from", () => {
+    assert.equal(
+      resolveHydrationAction({ ...base, hasPreferences: false }),
+      "reset"
+    );
+  });
+
+  test("re-hydrates after signing out and back in as the same user", () => {
+    // Sign-out clears preferences, which resets the latch...
+    assert.equal(
+      resolveHydrationAction({
+        ...base,
+        userUid: null,
+        preferencesUid: null,
+        hasPreferences: false,
+        hydratedForUid: "user-a",
+      }),
+      "reset"
+    );
+    // ...so the next matching preferences object hydrates again.
+    assert.equal(
+      resolveHydrationAction({ ...base, hydratedForUid: undefined }),
+      "hydrate"
+    );
+  });
+
+  test("hydrates signed-out preferences while genuinely signed out", () => {
+    assert.equal(
+      resolveHydrationAction({
+        ...base,
+        userUid: null,
+        preferencesUid: null,
+      }),
+      "hydrate"
+    );
   });
 });

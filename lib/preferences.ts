@@ -41,6 +41,37 @@ export function normalizePreferences(data: unknown): UserPreferences {
   };
 }
 
+// Deciding whether an editable copy of the preferences may be hydrated from the
+// context. `preferences` alone can't answer this: AuthContext publishes the new
+// `user` before it finishes awaiting the preference load, so there is always a
+// render where a signed-in uid is paired with the *previous* identity's
+// preferences — the signed-out object the theme toggle leaves behind, or the
+// account that was signed in a moment ago. Hydrating there latches the wrong
+// data and Save writes it back to Firestore under the new uid.
+//
+// The guard is therefore on identity, not presence: only hydrate when the
+// preferences are known to belong to the current uid.
+export type HydrationAction = "hydrate" | "reset" | "skip";
+
+export function resolveHydrationAction(input: {
+  userUid: string | null;
+  preferencesUid: string | null;
+  hasPreferences: boolean;
+  hydratedForUid: string | null | undefined;
+}): HydrationAction {
+  const { userUid, preferencesUid, hasPreferences, hydratedForUid } = input;
+
+  // Nothing trustworthy to read. "reset" rather than "skip" so the latch drops:
+  // signing out and back in as the same user must hydrate afresh instead of
+  // being mistaken for an already-hydrated session.
+  if (!hasPreferences || preferencesUid !== userUid) return "reset";
+
+  // Already hydrated for this identity — leave unsaved edits alone.
+  if (hydratedForUid === userUid) return "skip";
+
+  return "hydrate";
+}
+
 // Selection helpers. ServicePicker is a controlled component, so the list of
 // chosen services lives in the parent page; keeping the transitions pure here
 // means they can be unit tested without rendering React.
