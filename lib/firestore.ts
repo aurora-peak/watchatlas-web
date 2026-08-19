@@ -1,11 +1,8 @@
 // lib/firestore.ts
 import { db } from "./firebase";
 import { doc, setDoc, getDoc } from "firebase/firestore";
-
-export type UserPreferences = {
-  favoriteCountries: string[];
-  darkMode: boolean;
-};
+import { normalizePreferences } from "./preferences";
+import type { UserPreferences } from "./preferences";
 
 // Helper function to add timeout to promises
 function withTimeout<T>(promise: Promise<T>, ms: number, operation: string): Promise<T> {
@@ -47,7 +44,7 @@ export async function saveUserPreferences(
 // Load preferences with sensible defaults if fields are missing
 export async function loadUserPreferences(
   uid: string
-): Promise<UserPreferences | null> {
+): Promise<UserPreferences> {
   try {
     const userRef = doc(db, "users", uid);
     const snapshot = await withTimeout(
@@ -57,16 +54,14 @@ export async function loadUserPreferences(
     );
 
     if (snapshot.exists()) {
-      const data = snapshot.data();
-      return {
-        favoriteCountries: Array.isArray(data.favoriteCountries) ? data.favoriteCountries : [],
-        darkMode: typeof data.darkMode === "boolean" ? data.darkMode : true,
-      };
+      return normalizePreferences(snapshot.data());
     }
 
-    return null;
+    // A missing document is a valid new account, not a failed read. Publish
+    // explicit defaults so consumers can safely distinguish it from an error.
+    return normalizePreferences({});
   } catch (error) {
     console.error("Error loading preferences:", error);
-    return null;
+    throw error;
   }
 }

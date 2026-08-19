@@ -1,11 +1,14 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/router";
 import { useAuth } from "@/lib/AuthContext";
+import type { FavoriteService } from "@/lib/preferences";
+import { canSavePreferences, resolveHydrationAction } from "@/lib/preferences";
 import fullCountryList from "@/lib/full_country_list_with_flags.json";
 import { Search, Check, Globe, LogOut, User, Home } from "lucide-react";
 import Link from "next/link";
 import { GoogleAuthProvider, signInWithCredential } from "firebase/auth";
 import { auth } from "@/lib/firebase";
+import ServicePicker from "@/components/ServicePicker";
 
 type Country = {
   code: string;
@@ -21,19 +24,54 @@ declare global {
 }
 
 export default function SettingsPage() {
-  const { user, preferences, updatePreferences, signOut } = useAuth();
+  const {
+    user,
+    preferences,
+    preferencesUid,
+    preferencesStatus,
+    updatePreferences,
+    refreshPreferences,
+    signOut,
+  } = useAuth();
   const [selected, setSelected] = useState<string[]>([]);
+  const [selectedServices, setSelectedServices] = useState<FavoriteService[]>([]);
   const [groupedByContinent, setGroupedByContinent] = useState<Record<string, Country[]>>({});
   const [searchTerm, setSearchTerm] = useState("");
   const [saving, setSaving] = useState(false);
+  const [saveError, setSaveError] = useState<string | null>(null);
   const router = useRouter();
+  const preferencesReady = canSavePreferences({
+    userUid: user?.uid ?? null,
+    preferencesUid,
+    status: preferencesStatus,
+  });
 
-  // Initialize from preferences when they load
+  // Hydrate the editable copy from preferences once per signed-in user. A later
+  // refresh of `preferences` (another tab, a background reload) must not
+  // overwrite edits the user has in progress but has not saved yet — and
+  // preferences belonging to a different identity must never be hydrated at
+  // all, or Save writes them back under the wrong uid.
+  const hydratedForUid = useRef<string | null | undefined>(undefined);
+
   useEffect(() => {
-    if (preferences) {
-      setSelected(preferences.favoriteCountries ?? []);
+    const uid = user?.uid ?? null;
+    const action = resolveHydrationAction({
+      userUid: uid,
+      preferencesUid,
+      hasPreferences: Boolean(preferences),
+      hydratedForUid: hydratedForUid.current,
+    });
+
+    if (action === "reset") {
+      hydratedForUid.current = undefined;
+      return;
     }
-  }, [preferences]);
+    if (action === "skip") return;
+
+    hydratedForUid.current = uid;
+    setSelected(preferences!.favoriteCountries ?? []);
+    setSelectedServices(preferences!.favoriteServices ?? []);
+  }, [preferences, preferencesUid, user]);
 
   // Group countries by continent
   useEffect(() => {
@@ -133,18 +171,24 @@ export default function SettingsPage() {
     };
   }, [user]);
 
+  // One save for both countries and services. Local state is left untouched on
+  // failure so nothing the user picked is lost, and the error is rendered
+  // inline rather than swallowed.
   const handleSave = async () => {
-    if (user) {
-      setSaving(true);
-      try {
-        await updatePreferences({ favoriteCountries: selected });
-        router.push("/");
-      } catch (error) {
-        console.error("Error saving preferences:", error);
-        alert("Failed to save preferences. Please try again.");
-      } finally {
-        setSaving(false);
-      }
+    if (!user || !preferencesReady) return;
+    setSaving(true);
+    setSaveError(null);
+    try {
+      await updatePreferences({
+        favoriteCountries: selected,
+        favoriteServices: selectedServices,
+      });
+      router.push("/");
+    } catch (error) {
+      console.error("Error saving preferences:", error);
+      setSaveError("Could not save your preferences. Your selections are still here — try again.");
+    } finally {
+      setSaving(false);
     }
   };
 
@@ -301,7 +345,7 @@ export default function SettingsPage() {
                         onClick={() => toggleCountry(country.code)}
                         className="w-full flex items-center justify-between px-3 py-2 rounded-lg text-left transition-colors"
                         style={{
-                          background: isSelected ? "rgba(59, 130, 246, 0.1)" : "transparent",
+                          background: isSelected ? "var(--accent-soft)" : "transparent",
                         }}
                       >
                         <span className="flex items-center gap-2">
@@ -319,17 +363,75 @@ export default function SettingsPage() {
             );
           })}
         </div>
+
+        <ServicePicker
+          countries={selected}
+          selected={selectedServices}
+          onSelectedChange={setSelectedServices}
+        />
       </div>
 
       {/* Save Button */}
       {user && (
         <div className="sticky bottom-20 pt-4 pb-2" style={{ background: "var(--background)" }}>
+          {preferencesStatus === "loading" && (
+            <p
+              role="status"
+              className="max-w-md mx-auto mb-3 text-sm rounded-xl px-4 py-3"
+              style={{
+                background: "var(--card)",
+                border: "1px solid var(--border)",
+                color: "var(--foreground)",
+              }}
+            >
+              Loading your saved preferences…
+            </p>
+          )}
+          {preferencesStatus === "error" && (
+            <div
+              role="alert"
+              className="max-w-md mx-auto mb-3 text-sm rounded-xl px-4 py-3"
+              style={{
+                background: "var(--card)",
+                border: "1px solid var(--border)",
+                color: "var(--foreground)",
+              }}
+            >
+              <p>Could not load your saved preferences. Saving is disabled to protect them.</p>
+              <button
+                type="button"
+                onClick={() => void refreshPreferences()}
+                className="mt-2 font-semibold underline"
+              >
+                Retry loading
+              </button>
+            </div>
+          )}
+          {saveError && (
+            <p
+              role="alert"
+              className="max-w-md mx-auto mb-3 text-sm rounded-xl px-4 py-3"
+              style={{
+                background: "var(--card)",
+                border: "1px solid var(--border)",
+                color: "var(--foreground)",
+              }}
+            >
+              {saveError}
+            </p>
+          )}
           <button
             onClick={handleSave}
-            disabled={saving}
+            disabled={saving || !preferencesReady}
             className="btn-primary w-full max-w-md mx-auto block"
           >
-            {saving ? "Saving..." : `Save Preferences (${selected.length} countries)`}
+            {saving
+              ? "Saving..."
+              : preferencesStatus === "loading"
+                ? "Loading preferences..."
+                : preferencesStatus === "error"
+                  ? "Preferences unavailable"
+                  : `Save Preferences (${selected.length} countries, ${selectedServices.length} services)`}
           </button>
         </div>
       )}

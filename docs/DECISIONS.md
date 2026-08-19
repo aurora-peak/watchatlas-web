@@ -79,3 +79,10 @@ Entries marked `[inferred]` were reconstructed from code and git history during 
 
 - **Decision:** Onboard WatchAtlas to the standard workflow: `docs/ARCHITECTURE.md`, this decision log, `CLAUDE.md`, `GitHub-Project-Setup.md`, `type:` labels, and a "WatchAtlas Board" user-level GitHub Project.
 - **Why:** Consistency with other projects (chronicle, trove, ledger); gives agents and Josh a shared map and a captured-work rule.
+
+## 2026-07-19 — Preferred services are one flat global set, and only reorder
+
+- **Decision:** `favoriteServices` is a single flat list of TMDB provider IDs applied across every favorite country, not a per-country mapping. On detail pages the selection only ever reorders providers into "Your services" and "Also available on" — nothing is hidden.
+- **Alternatives:** per-country service selections; a "my services only" filter toggle.
+- **Why:** TMDB provider IDs are global (Netflix is 8 everywhere), so a flat set is coherent — a service simply never matches in a country where it does not operate. Reordering rather than filtering keeps the country-comparison view, which is the product's reason to exist, intact.
+- **Scope note:** the split applies to the three streaming tiers — `flatrate`, `free` and `ads` — matching `STREAMING_KEYS` in `lib/providerPreferences.ts` and the `with_watch_monetization_types` set that `pages/api/tmdb/discover.ts` queries. `rent` and `buy` are excluded and keep their existing flat rendering — a "your services" framing on purchase tiers would read as endorsement.

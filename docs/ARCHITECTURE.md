@@ -28,7 +28,8 @@ pages/
   index.tsx            # Home: search + browse rows (browse was merged into home)
   details/[id].tsx     # Title detail + where-to-watch by country/continent
   settings.tsx         # Google sign-in + favorite-country preferences
-  api/tmdb/            # 6 proxy routes: search, trending, popular, lists, details, providers
+  api/tmdb/            # 8 proxy routes: search, trending, popular, lists, details,
+                       #   providers, providers-list, discover
   api/health.ts        # TMDB health probe (60s module-level memo)
   api/cron/health-check.ts  # Daily cron monitor (see Monitoring)
 components/
@@ -39,6 +40,10 @@ components/
 lib/
   tmdb.ts              # Client fetch wrappers (tmdbService)
   firebase.ts / firestore.ts / AuthContext.tsx
+  preferences.ts       # Firebase-free preference logic
+  providerCatalog.ts   # parseRegions, mergeProviderCatalog — pure, zero imports
+  discoverMerge.ts     # parseProviderIds, mergeDiscoverResults — pure, zero imports
+  providerPreferences.ts  # splitProvidersByPreference, buildProviderDisplayTiers
   notifications.ts     # Discord + Slack + Resend email fan-out
   countries.ts / countryContinents.ts / getDisplayCountries.ts
   full_country_list_with_flags.json  # ~250 countries
@@ -60,7 +65,9 @@ The client never calls TMDB directly. `lib/tmdb.ts` → `/api/tmdb/*` → `api.t
 
 - Google Identity Services (GSI) script loaded imperatively in `pages/settings.tsx`; credential exchanged via Firebase `signInWithCredential`.
 - `lib/AuthContext.tsx` subscribes to `onAuthStateChanged`; exposes `user`, `preferences`, `signOut`, `updatePreferences`, `refreshPreferences`.
-- Firestore stores `users/{uid}` → `{ favoriteCountries: string[], darkMode: boolean }` via `setDoc(..., { merge: true })` with a 10s timeout wrapper. Note the **named** Firestore database: `getFirestore(app, "watchatlaspreference")`.
+- `lib/preferences.ts` owns the `FavoriteService` and `UserPreferences` types plus pure normalization and selection helpers; `lib/firestore.ts` imports that model and remains a persistence adapter rather than re-exporting it.
+- Firestore stores `users/{uid}` → `{ favoriteCountries: string[], favoriteServices: FavoriteService[], darkMode: boolean }` via `setDoc(..., { merge: true })` with a 10s timeout wrapper. Note the **named** Firestore database: `getFirestore(app, "watchatlaspreference")`.
+- `favoriteServices` is a flat global set of TMDB provider IDs (`{ id, name, logoPath }`), applied across every favorite country rather than mapped per country. `normalizePreferences` in `lib/preferences.ts` hardens whatever Firestore returns before the app sees it.
 
 ## Monitoring (built-out, previously undocumented)
 

@@ -5,3 +5,11 @@ node_modules/
 tsconfig.tsbuildinfo
 .claude/
 .superpowers/
+
+# graphify: generated graph artifacts are machine-specific (mtime-keyed manifest,
+# absolute interpreter path) and churn wholesale on rebuild. Keep the report only.
+graphify-out/*
+!graphify-out/GRAPH_REPORT.md
+
+# AI Code Review temporary files
+.ai-code-review/

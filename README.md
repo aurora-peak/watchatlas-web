@@ -28,6 +28,7 @@ Built and maintained by [Aurora Peak](https://github.com/aurora-peak).
 - **Search & browse** — trending, popular, and top-rated movies and TV from TMDB, with merged movie+TV search.
 - **Where to watch, globally** — per-title stream/rent/buy providers grouped by country and continent.
 - **Favorite countries** — Google sign-in saves your countries; detail pages filter to them.
+- **Your services** — save the streaming services you subscribe to; they power a personalized home row and surface first on every title's where-to-watch.
 - **Light & dark themes** — the whole app adapts to your preference.
 - **Status monitoring** — a live TMDB health banner plus a daily cron that alerts Discord, Slack, and email on outages.
 

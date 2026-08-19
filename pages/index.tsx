@@ -1,10 +1,12 @@
 import { useState, useRef, useEffect, useCallback } from "react";
 import { useRouter } from "next/router";
-import { Search, X, Film, Tv, TrendingUp, Star, Clock, Play } from "lucide-react";
+import { Search, X, Film, Tv, TrendingUp, Star, Clock, Play, Sparkles } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
 import ShowCard from "@/components/ShowCard";
 import { tmdbService, searchTMDBAll, TMDBResult, getPosterUrl } from "@/lib/tmdb";
+import { useAuth } from "@/lib/AuthContext";
+import { buildDiscoverQuery } from "@/lib/preferences";
 
 export default function HomePage() {
   const router = useRouter();
@@ -13,7 +15,7 @@ export default function HomePage() {
   const [searchInput, setSearchInput] = useState("");
   const [results, setResults] = useState<TMDBResult[] | null>(null);
   const [loadingSearch, setLoadingSearch] = useState(false);
-  
+
   const [suggestions, setSuggestions] = useState<TMDBResult[]>([]);
   const [showSuggestions, setShowSuggestions] = useState(false);
   const [filterMovies, setFilterMovies] = useState(true);
@@ -30,6 +32,9 @@ export default function HomePage() {
   const [upcomingMovies, setUpcomingMovies] = useState<TMDBResult[]>([]);
   const [nowPlayingMovies, setNowPlayingMovies] = useState<TMDBResult[]>([]);
   const [loadingBrowse, setLoadingBrowse] = useState(true);
+
+  const { user, preferences } = useAuth();
+  const [onMyServices, setOnMyServices] = useState<TMDBResult[]>([]);
 
   // Load browse lists on mount
   useEffect(() => {
@@ -57,6 +62,33 @@ export default function HomePage() {
     };
     loadBrowse();
   }, []);
+
+  // Personalized row. Deliberately silent on every failure path: if the user is
+  // signed out, has no services, or the request fails, the row simply does not
+  // render — the home page never shows an error for it.
+  useEffect(() => {
+    const query = buildDiscoverQuery(user, preferences);
+
+    if (!query) {
+      setOnMyServices([]);
+      return;
+    }
+
+    let cancelled = false;
+
+    fetch(query)
+      .then((response) => (response.ok ? response.json() : Promise.reject(response.status)))
+      .then((data: { results: TMDBResult[] }) => {
+        if (!cancelled) setOnMyServices(data.results ?? []);
+      })
+      .catch(() => {
+        if (!cancelled) setOnMyServices([]);
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [user, preferences?.favoriteCountries, preferences?.favoriteServices]);
 
   // Initialize filters from URL
   useEffect(() => {
@@ -190,7 +222,7 @@ export default function HomePage() {
       <div className="media-row">
         <div className="scroll-container flex gap-4 overflow-x-auto pb-4">
           {items.map((item) => (
-            <ShowCard key={item.id} result={item} />
+            <ShowCard key={`${item.media_type}:${item.id}`} result={item} />
           ))}
         </div>
       </div>
@@ -351,7 +383,7 @@ export default function HomePage() {
             ) : results && results.length > 0 ? (
               <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4">
                 {results.map((r) => (
-                  <ShowCard key={r.id} result={r} />
+                  <ShowCard key={`${r.media_type}:${r.id}`} result={r} />
                 ))}
               </div>
             ) : results && results.length === 0 ? (
@@ -375,6 +407,13 @@ export default function HomePage() {
               </>
             ) : (
               <>
+                {onMyServices.length > 0 && (
+                  <MediaRow
+                    title="On My Services"
+                    icon={<Sparkles size={24} style={{ color: "var(--accent)" }} />}
+                    items={onMyServices}
+                  />
+                )}
                 <MediaRow title="Trending Movies" icon={<TrendingUp size={24} style={{ color: "var(--accent)" }} />} items={trendingMovies} />
                 <MediaRow title="Trending TV Shows" icon={<TrendingUp size={24} style={{ color: "#8b5cf6" }} />} items={trendingTV} />
                 <MediaRow title="Now Playing" icon={<Play size={24} style={{ color: "#10b981" }} />} items={nowPlayingMovies} />
