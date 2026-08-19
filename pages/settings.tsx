@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/router";
 import { useAuth } from "@/lib/AuthContext";
 import type { FavoriteService } from "@/lib/preferences";
-import { resolveHydrationAction } from "@/lib/preferences";
+import { canSavePreferences, resolveHydrationAction } from "@/lib/preferences";
 import fullCountryList from "@/lib/full_country_list_with_flags.json";
 import { Search, Check, Globe, LogOut, User, Home } from "lucide-react";
 import Link from "next/link";
@@ -24,7 +24,15 @@ declare global {
 }
 
 export default function SettingsPage() {
-  const { user, preferences, preferencesUid, updatePreferences, signOut } = useAuth();
+  const {
+    user,
+    preferences,
+    preferencesUid,
+    preferencesStatus,
+    updatePreferences,
+    refreshPreferences,
+    signOut,
+  } = useAuth();
   const [selected, setSelected] = useState<string[]>([]);
   const [selectedServices, setSelectedServices] = useState<FavoriteService[]>([]);
   const [groupedByContinent, setGroupedByContinent] = useState<Record<string, Country[]>>({});
@@ -32,6 +40,11 @@ export default function SettingsPage() {
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
   const router = useRouter();
+  const preferencesReady = canSavePreferences({
+    userUid: user?.uid ?? null,
+    preferencesUid,
+    status: preferencesStatus,
+  });
 
   // Hydrate the editable copy from preferences once per signed-in user. A later
   // refresh of `preferences` (another tab, a background reload) must not
@@ -162,7 +175,7 @@ export default function SettingsPage() {
   // failure so nothing the user picked is lost, and the error is rendered
   // inline rather than swallowed.
   const handleSave = async () => {
-    if (!user) return;
+    if (!user || !preferencesReady) return;
     setSaving(true);
     setSaveError(null);
     try {
@@ -361,6 +374,39 @@ export default function SettingsPage() {
       {/* Save Button */}
       {user && (
         <div className="sticky bottom-20 pt-4 pb-2" style={{ background: "var(--background)" }}>
+          {preferencesStatus === "loading" && (
+            <p
+              role="status"
+              className="max-w-md mx-auto mb-3 text-sm rounded-xl px-4 py-3"
+              style={{
+                background: "var(--card)",
+                border: "1px solid var(--border)",
+                color: "var(--foreground)",
+              }}
+            >
+              Loading your saved preferences…
+            </p>
+          )}
+          {preferencesStatus === "error" && (
+            <div
+              role="alert"
+              className="max-w-md mx-auto mb-3 text-sm rounded-xl px-4 py-3"
+              style={{
+                background: "var(--card)",
+                border: "1px solid var(--border)",
+                color: "var(--foreground)",
+              }}
+            >
+              <p>Could not load your saved preferences. Saving is disabled to protect them.</p>
+              <button
+                type="button"
+                onClick={() => void refreshPreferences()}
+                className="mt-2 font-semibold underline"
+              >
+                Retry loading
+              </button>
+            </div>
+          )}
           {saveError && (
             <p
               role="alert"
@@ -376,12 +422,16 @@ export default function SettingsPage() {
           )}
           <button
             onClick={handleSave}
-            disabled={saving}
+            disabled={saving || !preferencesReady}
             className="btn-primary w-full max-w-md mx-auto block"
           >
             {saving
               ? "Saving..."
-              : `Save Preferences (${selected.length} countries, ${selectedServices.length} services)`}
+              : preferencesStatus === "loading"
+                ? "Loading preferences..."
+                : preferencesStatus === "error"
+                  ? "Preferences unavailable"
+                  : `Save Preferences (${selected.length} countries, ${selectedServices.length} services)`}
           </button>
         </div>
       )}

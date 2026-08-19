@@ -3,6 +3,31 @@ import { mergeProviderCatalog, parseRegions, type TmdbProviderResponse } from "@
 
 const API_BASE = "https://api.themoviedb.org/3";
 
+type ProviderSource = {
+  ok: boolean;
+  payload: TmdbProviderResponse;
+};
+
+async function fetchProviderSource(url: string): Promise<ProviderSource> {
+  try {
+    const response = await fetch(url);
+    if (!response.ok) return { ok: false, payload: {} };
+
+    const payload: unknown = await response.json();
+    if (
+      typeof payload !== "object" ||
+      payload === null ||
+      !Array.isArray((payload as TmdbProviderResponse).results)
+    ) {
+      return { ok: false, payload: {} };
+    }
+
+    return { ok: true, payload: payload as TmdbProviderResponse };
+  } catch {
+    return { ok: false, payload: {} };
+  }
+}
+
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   if (req.method !== "GET") {
     return res.status(405).json({ error: "Method not allowed" });
@@ -23,27 +48,27 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   }
 
   try {
-    const [movieRes, tvRes] = await Promise.all([
-      fetch(`${API_BASE}/watch/providers/movie?api_key=${apiKey}`),
-      fetch(`${API_BASE}/watch/providers/tv?api_key=${apiKey}`),
+    const sources = await Promise.all([
+      fetchProviderSource(`${API_BASE}/watch/providers/movie?api_key=${apiKey}`),
+      fetchProviderSource(`${API_BASE}/watch/providers/tv?api_key=${apiKey}`),
     ]);
+    const usable = sources.filter((source) => source.ok);
 
     // A partial outage still yields a usable catalog, so only fail when both die.
-    if (!movieRes.ok && !tvRes.ok) {
+    if (usable.length === 0) {
       return res.status(502).json({ error: "Failed to fetch provider catalog" });
     }
 
-    const payloads: TmdbProviderResponse[] = await Promise.all(
-      [movieRes, tvRes].map(async (response) => (response.ok ? await response.json() : {}))
+    const providers = mergeProviderCatalog(
+      usable.map((source) => source.payload),
+      regions
     );
-
-    const providers = mergeProviderCatalog(payloads, regions);
 
     // A complete catalogue changes rarely, so cache it for a day. A degraded one
     // is missing whichever providers were unique to the failed source, so cache
     // it briefly instead — otherwise a transient upstream blip hides services
     // from the picker for 24 hours with no way to bust it.
-    const complete = movieRes.ok && tvRes.ok;
+    const complete = usable.length === sources.length;
     res.setHeader(
       "Cache-Control",
       complete ? "s-maxage=86400, stale-while-revalidate" : "s-maxage=300, stale-while-revalidate"
