@@ -2,7 +2,7 @@ import { createContext, useContext, useEffect, useRef, useState, ReactNode } fro
 import { User, onAuthStateChanged, signOut as firebaseSignOut } from "firebase/auth";
 import { auth } from "./firebase";
 import { loadUserPreferences, saveUserPreferences } from "./firestore";
-import type { UserPreferences } from "./preferences";
+import type { PreferencesLoadStatus, UserPreferences } from "./preferences";
 
 interface AuthContextType {
   user: User | null;
@@ -12,6 +12,7 @@ interface AuthContextType {
   // resolves, so consumers cannot assume the two are in step. Anything that
   // copies preferences into its own state must check this first.
   preferencesUid: string | null;
+  preferencesStatus: PreferencesLoadStatus;
   loading: boolean;
   signOut: () => Promise<void>;
   updatePreferences: (prefs: Partial<UserPreferences>) => Promise<void>;
@@ -24,6 +25,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [preferences, setPreferences] = useState<UserPreferences | null>(null);
   const [preferencesUid, setPreferencesUid] = useState<string | null>(null);
+  const [preferencesStatus, setPreferencesStatus] = useState<PreferencesLoadStatus>("idle");
   const [loading, setLoading] = useState(true);
 
   // The uid of the most recent auth event. Two sign-ins in quick succession can
@@ -57,20 +59,31 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setPreferencesUid(null);
 
       if (firebaseUser) {
-        const prefs = await loadUserPreferences(firebaseUser.uid);
+        setPreferencesStatus("loading");
+        try {
+          const prefs = await loadUserPreferences(firebaseUser.uid);
 
-        // A newer auth event landed while this load was in flight — its result
-        // is the current one, so discard ours rather than clobbering it.
-        if (latestUid.current !== firebaseUser.uid) return;
+          // A newer auth event landed while this load was in flight — its result
+          // is the current one, so discard ours rather than clobbering it.
+          if (latestUid.current !== firebaseUser.uid) return;
 
-        setPreferences(prefs);
-        setPreferencesUid(firebaseUser.uid);
+          setPreferences(prefs);
+          setPreferencesUid(firebaseUser.uid);
+          setPreferencesStatus("ready");
 
-        // Apply dark mode preference from user prefs (default to true/dark)
-        const darkMode = prefs?.darkMode ?? true;
-        applyTheme(darkMode);
-        localStorage.setItem("darkMode", String(darkMode));
+          // Apply dark mode preference from user prefs (default to true/dark)
+          applyTheme(prefs.darkMode);
+          localStorage.setItem("darkMode", String(prefs.darkMode));
+        } catch {
+          if (latestUid.current !== firebaseUser.uid) return;
+          // Keep the failed read visibly distinct from a valid new account's
+          // empty defaults. Consumers must not enable persistence in this state.
+          setPreferences(null);
+          setPreferencesUid(null);
+          setPreferencesStatus("error");
+        }
       } else {
+        setPreferencesStatus("idle");
         // For non-logged-in users, use localStorage or default to dark
         const savedTheme = localStorage.getItem("darkMode");
         applyTheme(savedTheme === null ? true : savedTheme === "true");
@@ -89,6 +102,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setUser(null);
     setPreferences(null);
     setPreferencesUid(null);
+    setPreferencesStatus("idle");
   };
 
   const updatePreferences = async (prefs: Partial<UserPreferences>) => {
@@ -119,24 +133,27 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     // the previous identity's preferences into a signed-out context.
     if (latestUid.current !== user.uid) return;
 
-    // Update local state
-    setPreferences((prev) => ({
-      favoriteCountries: prev?.favoriteCountries ?? [],
-      darkMode: prev?.darkMode ?? true,
-      favoriteServices: prev?.favoriteServices ?? [],
-      ...prefs,
-    }));
-    // The merged object is this user's now, whether or not the load that would
-    // have claimed it has resolved.
-    setPreferencesUid(user.uid);
+    // A dark-mode write can happen while the initial read is still pending.
+    // Persist that single field, but do not manufacture an empty preference
+    // object or claim readiness before the authoritative read completes.
+    if (preferencesStatus === "ready" && preferencesUid === user.uid) {
+      setPreferences((prev) => prev ? { ...prev, ...prefs } : prev);
+    }
   };
 
   const refreshPreferences = async () => {
     if (!user) return;
-    const prefs = await loadUserPreferences(user.uid);
-    if (latestUid.current !== user.uid) return;
-    setPreferences(prefs);
-    setPreferencesUid(user.uid);
+    setPreferencesStatus("loading");
+    try {
+      const prefs = await loadUserPreferences(user.uid);
+      if (latestUid.current !== user.uid) return;
+      setPreferences(prefs);
+      setPreferencesUid(user.uid);
+      setPreferencesStatus("ready");
+    } catch {
+      if (latestUid.current !== user.uid) return;
+      setPreferencesStatus("error");
+    }
   };
 
   return (
@@ -145,6 +162,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         user,
         preferences,
         preferencesUid,
+        preferencesStatus,
         loading,
         signOut,
         updatePreferences,

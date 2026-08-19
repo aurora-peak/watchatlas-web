@@ -4,7 +4,9 @@
 // Firebase import. lib/firestore.ts imports lib/firebase.ts, which calls
 // initializeApp()/getAuth() at module load — importing that module just to
 // test normalizePreferences() boots live Firebase and throws without env
-// vars. Keeping this file dependency-free lets it be unit tested standalone.
+// vars. Keeping this file free of Firebase lets it be unit tested standalone.
+
+import { MAX_DISCOVER_PROVIDERS } from "./discoverMerge";
 
 export type FavoriteService = {
   id: number;
@@ -17,6 +19,8 @@ export type UserPreferences = {
   darkMode: boolean;
   favoriteServices: FavoriteService[];
 };
+
+export type PreferencesLoadStatus = "idle" | "loading" | "ready" | "error";
 
 // Firestore documents are untrusted input: a partial write or an older client
 // can leave any field missing or the wrong shape. Normalizing in one place keeps
@@ -72,6 +76,22 @@ export function resolveHydrationAction(input: {
   return "hydrate";
 }
 
+// A signed-in identity is not enough to make Save safe. The editable copy may
+// only be persisted after that identity's Firestore read completed
+// successfully; otherwise its initial empty arrays could overwrite stored
+// selections after a slow or failed load.
+export function canSavePreferences(input: {
+  userUid: string | null;
+  preferencesUid: string | null;
+  status: PreferencesLoadStatus;
+}): boolean {
+  return (
+    input.status === "ready" &&
+    input.userUid !== null &&
+    input.preferencesUid === input.userUid
+  );
+}
+
 // Selection helpers. ServicePicker is a controlled component, so the list of
 // chosen services lives in the parent page; keeping the transitions pure here
 // means they can be unit tested without rendering React.
@@ -100,7 +120,12 @@ export function resolveActiveCountry(countries: string[], current: string | null
 function isFavoriteService(value: unknown): value is { id: number; name: string; logoPath?: unknown } {
   if (typeof value !== "object" || value === null) return false;
   const candidate = value as Record<string, unknown>;
-  return Number.isFinite(candidate.id) && typeof candidate.name === "string";
+  return (
+    typeof candidate.id === "number" &&
+    Number.isSafeInteger(candidate.id) &&
+    candidate.id > 0 &&
+    typeof candidate.name === "string"
+  );
 }
 
 // Eligibility + query construction for the "On My Services" home row. Pure so
@@ -131,8 +156,16 @@ export function buildDiscoverQuery(
 
   if (countries.length === 0 || services.length === 0) return null;
 
+  const providerIds = [...new Set(
+    services
+      .map((service) => service.id)
+      .filter((id) => Number.isSafeInteger(id) && id > 0)
+  )].sort((a, b) => a - b);
+
+  if (providerIds.length === 0 || providerIds.length > MAX_DISCOVER_PROVIDERS) return null;
+
   const regions = encodeURIComponent(countries.join(","));
-  const providers = encodeURIComponent(services.map((service) => service.id).join("|"));
+  const providers = encodeURIComponent(providerIds.join("|"));
 
   return `/api/tmdb/discover?regions=${regions}&providers=${providers}`;
 }

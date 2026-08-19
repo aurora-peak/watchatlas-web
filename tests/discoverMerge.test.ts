@@ -3,6 +3,7 @@ import assert from "node:assert/strict";
 import {
   parseProviderIds,
   mergeDiscoverResults,
+  MAX_DISCOVER_PROVIDERS,
   MAX_DISCOVER_RESULTS,
   type DiscoverItem,
 } from "../lib/discoverMerge";
@@ -32,8 +33,8 @@ describe("parseProviderIds", () => {
     assert.deepEqual(parseProviderIds("8"), [8]);
   });
 
-  test("dedupes and preserves first-seen order", () => {
-    assert.deepEqual(parseProviderIds("8|337|8"), [8, 337]);
+  test("dedupes and sorts into canonical order", () => {
+    assert.deepEqual(parseProviderIds("337|8|337"), [8, 337]);
   });
 
   test("rejects non-numeric, negative, and malformed input", () => {
@@ -41,12 +42,22 @@ describe("parseProviderIds", () => {
     assert.equal(parseProviderIds("-8"), null);
     assert.equal(parseProviderIds("8.5"), null);
     assert.equal(parseProviderIds("8||337"), null);
+    assert.equal(parseProviderIds("0"), null);
   });
 
   test("rejects absent, empty, or non-string input", () => {
     assert.equal(parseProviderIds(undefined), null);
     assert.equal(parseProviderIds(""), null);
     assert.equal(parseProviderIds(["8"]), null);
+  });
+
+  test("rejects provider sets above the public route limit", () => {
+    const tooMany = Array.from(
+      { length: MAX_DISCOVER_PROVIDERS + 1 },
+      (_, index) => index + 1
+    ).join("|");
+
+    assert.equal(parseProviderIds(tooMany), null);
   });
 });
 

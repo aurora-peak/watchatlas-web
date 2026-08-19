@@ -44,7 +44,7 @@ export async function saveUserPreferences(
 // Load preferences with sensible defaults if fields are missing
 export async function loadUserPreferences(
   uid: string
-): Promise<UserPreferences | null> {
+): Promise<UserPreferences> {
   try {
     const userRef = doc(db, "users", uid);
     const snapshot = await withTimeout(
@@ -57,9 +57,11 @@ export async function loadUserPreferences(
       return normalizePreferences(snapshot.data());
     }
 
-    return null;
+    // A missing document is a valid new account, not a failed read. Publish
+    // explicit defaults so consumers can safely distinguish it from an error.
+    return normalizePreferences({});
   } catch (error) {
     console.error("Error loading preferences:", error);
-    return null;
+    throw error;
   }
 }

@@ -14,6 +14,9 @@ export type DiscoverItem = {
 /** TMDB is queried once per region per media type, so this bounds the fan-out at 10 calls. */
 export const MAX_DISCOVER_REGIONS = 5;
 
+/** Keeps the public discover route's provider fan-out and cache-key surface bounded. */
+export const MAX_DISCOVER_PROVIDERS = 50;
+
 export const MAX_DISCOVER_RESULTS = 20;
 
 const POSITIVE_INT = /^\d+$/;
@@ -30,9 +33,12 @@ export function parseProviderIds(raw: unknown): number[] | null {
   if (parts.some((part) => !POSITIVE_INT.test(part))) return null;
 
   const ids = parts.map(Number);
-  if (ids.some((id) => !Number.isSafeInteger(id))) return null;
+  if (ids.some((id) => !Number.isSafeInteger(id) || id <= 0)) return null;
 
-  return [...new Set(ids)];
+  const canonical = [...new Set(ids)].sort((a, b) => a - b);
+  if (canonical.length > MAX_DISCOVER_PROVIDERS) return null;
+
+  return canonical;
 }
 
 /**

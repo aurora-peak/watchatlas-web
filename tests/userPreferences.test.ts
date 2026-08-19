@@ -2,12 +2,14 @@ import { test, describe } from "node:test";
 import assert from "node:assert/strict";
 import {
   buildDiscoverQuery,
+  canSavePreferences,
   normalizePreferences,
   removeFavoriteService,
   resolveActiveCountry,
   resolveHydrationAction,
   toggleFavoriteService,
 } from "../lib/preferences";
+import { MAX_DISCOVER_PROVIDERS } from "../lib/discoverMerge";
 
 describe("normalizePreferences", () => {
   test("defaults favoriteServices to an empty array when absent", () => {
@@ -79,6 +81,20 @@ describe("normalizePreferences", () => {
     });
 
     assert.deepEqual(prefs.favoriteServices, []);
+  });
+
+  test("drops non-positive, fractional, and unsafe ids while keeping valid entries", () => {
+    const prefs = normalizePreferences({
+      favoriteServices: [
+        { id: -8, name: "Negative" },
+        { id: 0, name: "Zero" },
+        { id: 8.5, name: "Fractional" },
+        { id: Number.MAX_SAFE_INTEGER + 1, name: "Unsafe" },
+        { id: 8, name: "Netflix", logoPath: "/n.jpg" },
+      ],
+    });
+
+    assert.deepEqual(prefs.favoriteServices, [NETFLIX]);
   });
 });
 
@@ -175,6 +191,27 @@ describe("buildDiscoverQuery", () => {
     assert.equal(query, "/api/tmdb/discover?regions=US%2CGB&providers=8%7C337");
   });
 
+  test("sorts and dedupes provider ids for one canonical cache key", () => {
+    const query = buildDiscoverQuery(SIGNED_IN_USER, {
+      favoriteCountries: ["US"],
+      favoriteServices: [DISNEY, NETFLIX, { ...NETFLIX, name: "Duplicate" }],
+    });
+
+    assert.equal(query, "/api/tmdb/discover?regions=US&providers=8%7C337");
+  });
+
+  test("does not build a request above the provider limit", () => {
+    const favoriteServices = Array.from(
+      { length: MAX_DISCOVER_PROVIDERS + 1 },
+      (_, index) => ({ id: index + 1, name: `Provider ${index + 1}`, logoPath: "" })
+    );
+
+    assert.equal(
+      buildDiscoverQuery(SIGNED_IN_USER, { favoriteCountries: ["US"], favoriteServices }),
+      null
+    );
+  });
+
   test("encodes a country value containing an ampersand rather than letting it mangle the query string", () => {
     const query = buildDiscoverQuery(SIGNED_IN_USER, {
       favoriteCountries: ["US&evil=1"],
@@ -192,6 +229,27 @@ describe("buildDiscoverQuery", () => {
     });
 
     assert.equal(query, `/api/tmdb/discover?regions=${encodeURIComponent(manyCountries.join(","))}&providers=8`);
+  });
+});
+
+describe("canSavePreferences", () => {
+  test("only enables persistence for successfully loaded preferences owned by the current user", () => {
+    assert.equal(
+      canSavePreferences({ userUid: "user-a", preferencesUid: "user-a", status: "ready" }),
+      true
+    );
+    assert.equal(
+      canSavePreferences({ userUid: "user-a", preferencesUid: null, status: "loading" }),
+      false
+    );
+    assert.equal(
+      canSavePreferences({ userUid: "user-a", preferencesUid: null, status: "error" }),
+      false
+    );
+    assert.equal(
+      canSavePreferences({ userUid: "user-a", preferencesUid: "user-b", status: "ready" }),
+      false
+    );
   });
 });
 

@@ -34,6 +34,17 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     });
   }
 
+  // Canonical input collapses equivalent provider sets to one cache key. The
+  // client emits this sorted, deduped form; rejecting variants prevents public
+  // callers from bypassing the CDN with permutations that trigger identical
+  // upstream work.
+  const providerParam = providers.join("|");
+  if (req.query.providers !== providerParam) {
+    return res.status(400).json({
+      error: "providers must be sorted, unique positive TMDB provider ids",
+    });
+  }
+
   const apiKey = process.env.TMDB_API_KEY;
 
   if (!apiKey) {
@@ -42,11 +53,10 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
   // Bound the fan-out; the response reports what was actually queried so the UI
   // can be honest about coverage rather than implying it searched everywhere.
-  const regionsUsed = allRegions.slice(0, MAX_DISCOVER_REGIONS);
-  const providerParam = providers.join("|");
+  const requestedRegions = allRegions.slice(0, MAX_DISCOVER_REGIONS);
 
-  const requests = regionsUsed.flatMap((region) =>
-    MEDIA_TYPES.map(async (mediaType): Promise<DiscoverItem[]> => {
+  const requests = requestedRegions.flatMap((region) =>
+    MEDIA_TYPES.map(async (mediaType): Promise<{ region: string; items: DiscoverItem[] }> => {
       const url =
         `${API_BASE}/discover/${mediaType}` +
         `?api_key=${apiKey}` +
@@ -59,22 +69,26 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       if (!response.ok) throw new Error(`discover ${mediaType} ${region} responded ${response.status}`);
 
       const data = await response.json();
-      return (data.results ?? []).map((item: any) => ({
-        id: item.id,
-        media_type: mediaType,
-        title: item.title,
-        name: item.name,
-        poster_path: item.poster_path,
-        popularity: item.popularity,
-        release_date: item.release_date,
-        first_air_date: item.first_air_date,
-      }));
+      return {
+        region,
+        items: (data.results ?? []).map((item: any) => ({
+          id: item.id,
+          media_type: mediaType,
+          title: item.title,
+          name: item.name,
+          poster_path: item.poster_path,
+          popularity: item.popularity,
+          release_date: item.release_date,
+          first_air_date: item.first_air_date,
+        })),
+      };
     })
   );
 
   const settled = await Promise.allSettled(requests);
   const succeeded = settled.filter(
-    (result): result is PromiseFulfilledResult<DiscoverItem[]> => result.status === "fulfilled"
+    (result): result is PromiseFulfilledResult<{ region: string; items: DiscoverItem[] }> =>
+      result.status === "fulfilled"
   );
 
   // Only a total failure is an error; otherwise merge whatever came back.
@@ -83,8 +97,14 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     return res.status(502).json({ error: "Failed to fetch discover results" });
   }
 
-  const results = mergeDiscoverResults(succeeded.map((result) => result.value));
+  const results = mergeDiscoverResults(succeeded.map((result) => result.value.items));
+  const successfulRegionSet = new Set(succeeded.map((result) => result.value.region));
+  const regionsUsed = requestedRegions.filter((region) => successfulRegionSet.has(region));
+  const complete = succeeded.length === requests.length;
 
-  res.setHeader("Cache-Control", "s-maxage=600, stale-while-revalidate");
+  res.setHeader(
+    "Cache-Control",
+    complete ? "s-maxage=600, stale-while-revalidate" : "s-maxage=300, stale-while-revalidate"
+  );
   return res.status(200).json({ results, regionsUsed });
 }
