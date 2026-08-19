@@ -129,7 +129,7 @@ describe("discover route", () => {
 
     const res = createResponse();
     await discoverHandler(
-      { method: "GET", query: { regions: "US,GB", providers: "8|337" } } as any,
+      { method: "GET", query: { regions: "GB,US", providers: "8|337" } } as any,
       res as any
     );
 
@@ -144,12 +144,12 @@ describe("discover route", () => {
 
     const res = createResponse();
     await discoverHandler(
-      { method: "GET", query: { regions: "US,GB", providers: "8|337" } } as any,
+      { method: "GET", query: { regions: "GB,US", providers: "8|337" } } as any,
       res as any
     );
 
     assert.equal(res.statusCode, 200);
-    assert.deepEqual(res.body.regionsUsed, ["US", "GB"]);
+    assert.deepEqual(res.body.regionsUsed, ["GB", "US"]);
     assert.equal(res.headers["Cache-Control"], "s-maxage=600, stale-while-revalidate");
   });
 
@@ -163,6 +163,23 @@ describe("discover route", () => {
     const res = createResponse();
     await discoverHandler(
       { method: "GET", query: { regions: "US", providers: "337|8|337" } } as any,
+      res as any
+    );
+
+    assert.equal(res.statusCode, 400);
+    assert.equal(fetchCalls, 0);
+  });
+
+  test("rejects noncanonical region permutations before making upstream requests", async (t) => {
+    let fetchCalls = 0;
+    installFetch(t, (async () => {
+      fetchCalls += 1;
+      return response({ results: [] });
+    }) as typeof fetch);
+
+    const res = createResponse();
+    await discoverHandler(
+      { method: "GET", query: { regions: "US,GB", providers: "8|337" } } as any,
       res as any
     );
 

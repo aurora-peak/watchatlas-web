@@ -1,5 +1,5 @@
 import type { NextApiRequest, NextApiResponse } from "next";
-import { parseRegions } from "@/lib/providerCatalog";
+import { canonicalizeRegionSet, parseRegions } from "@/lib/providerCatalog";
 import {
   MAX_DISCOVER_REGIONS,
   mergeDiscoverResults,
@@ -28,6 +28,17 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     });
   }
 
+  const canonicalRegions = canonicalizeRegionSet(allRegions);
+  if (!canonicalRegions) {
+    return res.status(400).json({ error: "Invalid regions" });
+  }
+  const regionParam = canonicalRegions.join(",");
+  if (req.query.regions !== regionParam) {
+    return res.status(400).json({
+      error: "regions must be sorted, unique uppercase ISO-3166-1 alpha-2 codes",
+    });
+  }
+
   if (!providers) {
     return res.status(400).json({
       error: "providers is required as a pipe-separated list of TMDB provider ids, e.g. providers=8|337",
@@ -53,7 +64,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
   // Bound the fan-out; the response reports what was actually queried so the UI
   // can be honest about coverage rather than implying it searched everywhere.
-  const requestedRegions = allRegions.slice(0, MAX_DISCOVER_REGIONS);
+  const requestedRegions = canonicalRegions.slice(0, MAX_DISCOVER_REGIONS);
 
   const requests = requestedRegions.flatMap((region) =>
     MEDIA_TYPES.map(async (mediaType): Promise<{ region: string; items: DiscoverItem[] }> => {

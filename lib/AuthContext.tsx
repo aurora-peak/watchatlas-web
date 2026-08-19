@@ -2,7 +2,8 @@ import { createContext, useContext, useEffect, useRef, useState, ReactNode } fro
 import { User, onAuthStateChanged, signOut as firebaseSignOut } from "firebase/auth";
 import { auth } from "./firebase";
 import { loadUserPreferences, saveUserPreferences } from "./firestore";
-import type { PreferencesLoadStatus, UserPreferences } from "./preferences";
+import { reconcilePreferencesWithThemeSelection } from "./preferences";
+import type { PreferencesLoadStatus, ThemeSelection, UserPreferences } from "./preferences";
 
 interface AuthContextType {
   user: User | null;
@@ -32,6 +33,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   // resolve their loads out of order, so a load only publishes if its own uid is
   // still the current one.
   const latestUid = useRef<string | null>(null);
+  const themeRevision = useRef(0);
+  const latestThemeSelection = useRef<ThemeSelection | null>(null);
 
   // Apply theme based on darkMode preference (dark is default, light when darkMode is false)
   const applyTheme = (darkMode: boolean) => {
@@ -50,7 +53,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
 
     const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
-      latestUid.current = firebaseUser?.uid ?? null;
+      const nextUid = firebaseUser?.uid ?? null;
+      if (latestUid.current !== nextUid) latestThemeSelection.current = null;
+      latestUid.current = nextUid;
       setUser(firebaseUser);
 
       // Drop the outgoing identity's preferences before awaiting the next
@@ -61,11 +66,19 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       if (firebaseUser) {
         setPreferencesStatus("loading");
         try {
-          const prefs = await loadUserPreferences(firebaseUser.uid);
+          const loadStartedAtThemeRevision = themeRevision.current;
+          const loadedPreferences = await loadUserPreferences(firebaseUser.uid);
 
           // A newer auth event landed while this load was in flight — its result
           // is the current one, so discard ours rather than clobbering it.
           if (latestUid.current !== firebaseUser.uid) return;
+
+          const prefs = reconcilePreferencesWithThemeSelection(
+            loadedPreferences,
+            firebaseUser.uid,
+            loadStartedAtThemeRevision,
+            latestThemeSelection.current
+          );
 
           setPreferences(prefs);
           setPreferencesUid(firebaseUser.uid);
@@ -99,6 +112,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     await firebaseSignOut(auth);
     localStorage.removeItem("user");
     latestUid.current = null;
+    latestThemeSelection.current = null;
     setUser(null);
     setPreferences(null);
     setPreferencesUid(null);
@@ -108,6 +122,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const updatePreferences = async (prefs: Partial<UserPreferences>) => {
     // Save to localStorage for non-logged-in users
     if (prefs.darkMode !== undefined) {
+      themeRevision.current += 1;
+      latestThemeSelection.current = {
+        uid: user?.uid ?? null,
+        darkMode: prefs.darkMode,
+        revision: themeRevision.current,
+      };
       localStorage.setItem("darkMode", String(prefs.darkMode));
       applyTheme(prefs.darkMode);
     }
@@ -145,8 +165,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     if (!user) return;
     setPreferencesStatus("loading");
     try {
-      const prefs = await loadUserPreferences(user.uid);
+      const loadStartedAtThemeRevision = themeRevision.current;
+      const loadedPreferences = await loadUserPreferences(user.uid);
       if (latestUid.current !== user.uid) return;
+      const prefs = reconcilePreferencesWithThemeSelection(
+        loadedPreferences,
+        user.uid,
+        loadStartedAtThemeRevision,
+        latestThemeSelection.current
+      );
       setPreferences(prefs);
       setPreferencesUid(user.uid);
       setPreferencesStatus("ready");

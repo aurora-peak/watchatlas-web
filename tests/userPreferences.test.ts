@@ -5,6 +5,7 @@ import {
   canSavePreferences,
   normalizePreferences,
   removeFavoriteService,
+  reconcilePreferencesWithThemeSelection,
   resolveActiveCountry,
   resolveHydrationAction,
   toggleFavoriteService,
@@ -188,7 +189,16 @@ describe("buildDiscoverQuery", () => {
       favoriteServices: [NETFLIX, DISNEY],
     });
 
-    assert.equal(query, "/api/tmdb/discover?regions=US%2CGB&providers=8%7C337");
+    assert.equal(query, "/api/tmdb/discover?regions=GB%2CUS&providers=8%7C337");
+  });
+
+  test("sorts and dedupes regions for one canonical cache key", () => {
+    const query = buildDiscoverQuery(SIGNED_IN_USER, {
+      favoriteCountries: ["us", "GB", "US"],
+      favoriteServices: [NETFLIX],
+    });
+
+    assert.equal(query, "/api/tmdb/discover?regions=GB%2CUS&providers=8");
   });
 
   test("sorts and dedupes provider ids for one canonical cache key", () => {
@@ -212,13 +222,22 @@ describe("buildDiscoverQuery", () => {
     );
   });
 
-  test("encodes a country value containing an ampersand rather than letting it mangle the query string", () => {
+  test("rejects a malformed country value rather than putting it in the query string", () => {
     const query = buildDiscoverQuery(SIGNED_IN_USER, {
       favoriteCountries: ["US&evil=1"],
       favoriteServices: [NETFLIX],
     });
 
-    assert.equal(query, "/api/tmdb/discover?regions=US%26evil%3D1&providers=8");
+    assert.equal(query, null);
+  });
+
+  test("rejects a stored value that tries to smuggle multiple region codes", () => {
+    const query = buildDiscoverQuery(SIGNED_IN_USER, {
+      favoriteCountries: ["US,GB"],
+      favoriteServices: [NETFLIX],
+    });
+
+    assert.equal(query, null);
   });
 
   test("does not cap the region count client-side (the discover API caps server-side)", () => {
@@ -228,7 +247,46 @@ describe("buildDiscoverQuery", () => {
       favoriteServices: [NETFLIX],
     });
 
-    assert.equal(query, `/api/tmdb/discover?regions=${encodeURIComponent(manyCountries.join(","))}&providers=8`);
+    assert.equal(
+      query,
+      `/api/tmdb/discover?regions=${encodeURIComponent([...manyCountries].sort().join(","))}&providers=8`
+    );
+  });
+});
+
+describe("reconcilePreferencesWithThemeSelection", () => {
+  const loaded = normalizePreferences({ darkMode: true });
+
+  test("keeps a theme toggle made while the read was in flight", () => {
+    const reconciled = reconcilePreferencesWithThemeSelection(
+      loaded,
+      "user-a",
+      4,
+      { uid: "user-a", darkMode: false, revision: 5 }
+    );
+
+    assert.equal(reconciled.darkMode, false);
+  });
+
+  test("does not let an older or different user's selection mask the loaded value", () => {
+    assert.equal(
+      reconcilePreferencesWithThemeSelection(
+        loaded,
+        "user-a",
+        5,
+        { uid: "user-a", darkMode: false, revision: 5 }
+      ).darkMode,
+      true
+    );
+    assert.equal(
+      reconcilePreferencesWithThemeSelection(
+        loaded,
+        "user-a",
+        4,
+        { uid: "user-b", darkMode: false, revision: 5 }
+      ).darkMode,
+      true
+    );
   });
 });
 
