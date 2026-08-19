@@ -59,8 +59,14 @@ export function mergeProviderCatalog(
       const existing = byId.get(provider.provider_id);
       if (existing) {
         // The same provider appears in both the movie and TV catalogues; union
-        // their regions and take the best priority across both, so the result
-        // does not depend on which catalogue was processed first.
+        // their regions and take the best priority across both, so `regions`
+        // and `displayPriority` do not depend on which catalogue was processed
+        // first. `name` and `logoPath` are NOT merged — they keep the values
+        // from whichever catalogue was seen first, so a provider whose
+        // `logo_path` is null in one response and populated in the other still
+        // renders order-dependently. Tracked separately; `pickCanonical` in
+        // lib/providerPreferences.ts is the order-independent rule to follow
+        // when fixing it.
         existing.regions = [...new Set([...existing.regions, ...available])];
         existing.displayPriority = Math.min(existing.displayPriority, priorityFor(provider, available));
         continue;
