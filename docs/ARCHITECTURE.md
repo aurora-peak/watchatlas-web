@@ -40,7 +40,7 @@ components/
 lib/
   tmdb.ts              # Client fetch wrappers (tmdbService)
   firebase.ts / firestore.ts / AuthContext.tsx
-  preferences.ts       # Firebase-free preference logic (firestore.ts re-exports it)
+  preferences.ts       # Firebase-free preference logic
   providerCatalog.ts   # parseRegions, mergeProviderCatalog — pure, zero imports
   discoverMerge.ts     # parseProviderIds, mergeDiscoverResults — pure, zero imports
   providerPreferences.ts  # splitProvidersByPreference, buildProviderDisplayTiers
