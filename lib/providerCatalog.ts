@@ -58,9 +58,17 @@ export function mergeProviderCatalog(
 
       const existing = byId.get(provider.provider_id);
       if (existing) {
-        // The same provider appears in both the movie and TV catalogues; union
-        // their regions and take the best priority across both, so the result
-        // does not depend on which catalogue was processed first.
+        // The same provider appears in both the movie and TV catalogues. Merge
+        // every field with commutative rules so response order cannot change
+        // the result: union regions, take the best priority, and choose stable
+        // canonical metadata while preferring a populated logo.
+        const metadata = pickCanonicalMetadata(existing, {
+          name: provider.provider_name,
+          logoPath: provider.logo_path ?? "",
+        });
+
+        existing.name = metadata.name;
+        existing.logoPath = metadata.logoPath;
         existing.regions = [...new Set([...existing.regions, ...available])];
         existing.displayPriority = Math.min(existing.displayPriority, priorityFor(provider, available));
         continue;
@@ -79,6 +87,20 @@ export function mergeProviderCatalog(
   return [...byId.values()].sort(
     (a, b) => a.displayPriority - b.displayPriority || a.name.localeCompare(b.name)
   );
+}
+
+type ProviderMetadata = Pick<CatalogProvider, "name" | "logoPath">;
+
+/**
+ * Picks one metadata record whole using a total order. Pairwise selection is
+ * therefore commutative and associative, which keeps the result stable even if
+ * TMDB returns duplicate providers in a different catalogue order.
+ */
+function pickCanonicalMetadata(a: ProviderMetadata, b: ProviderMetadata): ProviderMetadata {
+  if (Boolean(a.logoPath) !== Boolean(b.logoPath)) return a.logoPath ? a : b;
+  if (a.name !== b.name) return a.name < b.name ? a : b;
+  if (a.logoPath !== b.logoPath) return a.logoPath < b.logoPath ? a : b;
+  return a;
 }
 
 function regionsFor(provider: TmdbProvider, regions: string[]): string[] {

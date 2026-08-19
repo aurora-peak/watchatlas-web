@@ -122,4 +122,39 @@ describe("mergeProviderCatalog", () => {
     assert.deepEqual(movieFirst[0].regions.sort(), ["GB", "US"]);
     assert.deepEqual(tvFirst[0].regions.sort(), ["GB", "US"]);
   });
+
+  test("prefers populated duplicate metadata regardless of catalogue order", () => {
+    const withoutLogo = { ...netflix, logo_path: null };
+    const withLogo = { ...netflix, logo_path: "/netflix-tv.jpg" };
+
+    const withoutLogoFirst = mergeProviderCatalog(
+      [{ results: [withoutLogo] }, { results: [withLogo] }],
+      ["US"]
+    );
+    const withLogoFirst = mergeProviderCatalog(
+      [{ results: [withLogo] }, { results: [withoutLogo] }],
+      ["US"]
+    );
+
+    assert.deepEqual(withoutLogoFirst, withLogoFirst);
+    assert.equal(withoutLogoFirst[0].logoPath, "/netflix-tv.jpg");
+  });
+
+  test("uses stable tie-breakers for conflicting names and populated logos", () => {
+    const alpha = { ...netflix, provider_name: "Alpha", logo_path: "/z.jpg" };
+    const beta = { ...netflix, provider_name: "Beta", logo_path: "/a.jpg" };
+    const logoA = { ...netflix, provider_name: "Netflix", logo_path: "/a.jpg" };
+    const logoZ = { ...netflix, provider_name: "Netflix", logo_path: "/z.jpg" };
+
+    const nameForward = mergeProviderCatalog([{ results: [alpha] }, { results: [beta] }], ["US"]);
+    const nameReverse = mergeProviderCatalog([{ results: [beta] }, { results: [alpha] }], ["US"]);
+    const logoForward = mergeProviderCatalog([{ results: [logoZ] }, { results: [logoA] }], ["US"]);
+    const logoReverse = mergeProviderCatalog([{ results: [logoA] }, { results: [logoZ] }], ["US"]);
+
+    assert.deepEqual(nameForward, nameReverse);
+    assert.equal(nameForward[0].name, "Alpha");
+    assert.equal(nameForward[0].logoPath, "/z.jpg");
+    assert.deepEqual(logoForward, logoReverse);
+    assert.equal(logoForward[0].logoPath, "/a.jpg");
+  });
 });
