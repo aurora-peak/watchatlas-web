@@ -1,7 +1,8 @@
 import { createContext, useContext, useEffect, useRef, useState, ReactNode } from "react";
 import { User, onAuthStateChanged, signOut as firebaseSignOut } from "firebase/auth";
 import { auth } from "./firebase";
-import { loadUserPreferences, saveUserPreferences, UserPreferences } from "./firestore";
+import { loadUserPreferences, saveUserPreferences } from "./firestore";
+import type { UserPreferences } from "./preferences";
 
 interface AuthContextType {
   user: User | null;

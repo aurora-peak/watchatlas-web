@@ -4,9 +4,6 @@ import { doc, setDoc, getDoc } from "firebase/firestore";
 import { normalizePreferences } from "./preferences";
 import type { UserPreferences } from "./preferences";
 
-export { normalizePreferences } from "./preferences";
-export type { FavoriteService, UserPreferences } from "./preferences";
-
 // Helper function to add timeout to promises
 function withTimeout<T>(promise: Promise<T>, ms: number, operation: string): Promise<T> {
   return new Promise((resolve, reject) => {

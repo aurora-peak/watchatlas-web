@@ -5,7 +5,7 @@ import {
   buildProviderDisplayTiers,
   collectStreamingProviders,
 } from "../lib/providerPreferences";
-import type { FavoriteService } from "../lib/firestore";
+import type { FavoriteService } from "../lib/preferences";
 
 const provider = (id: number, name: string) => ({
   provider_id: id,
