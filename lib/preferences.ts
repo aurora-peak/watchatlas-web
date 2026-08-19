@@ -7,6 +7,7 @@
 // vars. Keeping this file free of Firebase lets it be unit tested standalone.
 
 import { MAX_DISCOVER_PROVIDERS } from "./discoverMerge";
+import { canonicalizeRegionSet } from "./providerCatalog";
 
 export type FavoriteService = {
   id: number;
@@ -21,6 +22,12 @@ export type UserPreferences = {
 };
 
 export type PreferencesLoadStatus = "idle" | "loading" | "ready" | "error";
+
+export type ThemeSelection = {
+  uid: string | null;
+  darkMode: boolean;
+  revision: number;
+};
 
 // Firestore documents are untrusted input: a partial write or an older client
 // can leave any field missing or the wrong shape. Normalizing in one place keeps
@@ -92,6 +99,26 @@ export function canSavePreferences(input: {
   );
 }
 
+// A Firestore read can start before a theme toggle and resolve after it. Only a
+// selection made after that read began may override its snapshot; older local
+// selections must not mask a genuinely newer server read.
+export function reconcilePreferencesWithThemeSelection(
+  preferences: UserPreferences,
+  userUid: string,
+  loadStartedAtThemeRevision: number,
+  selection: ThemeSelection | null
+): UserPreferences {
+  if (
+    !selection ||
+    selection.uid !== userUid ||
+    selection.revision <= loadStartedAtThemeRevision
+  ) {
+    return preferences;
+  }
+
+  return { ...preferences, darkMode: selection.darkMode };
+}
+
 // Selection helpers. ServicePicker is a controlled component, so the list of
 // chosen services lives in the parent page; keeping the transitions pure here
 // means they can be unit tested without rendering React.
@@ -134,13 +161,10 @@ function isFavoriteService(value: unknown): value is { id: number; name: string;
 // Firebase's `User` type, keeping this module dependency-free; a real
 // firebase/auth `User` satisfies this shape.
 //
-// `favoriteCountries` is only type-validated by normalizePreferences (entries
-// are guaranteed to be strings, but not to be real region codes), so a
-// malformed Firestore value containing "&" or "#" must not be allowed to
-// mangle the query string — hence
-// encodeURIComponent around the joined region/provider lists rather than
-// around each element (the delimiter itself needs to survive being embedded
-// in the query value and round-trip through Next's automatic query decoding).
+// `favoriteCountries` comes from an untrusted Firestore document, so validate
+// it with the API's parser and canonicalize its set before building the URL.
+// This keeps equivalent selections on one CDN cache key. encodeURIComponent
+// then ensures the delimiters round-trip through Next's query decoding.
 //
 // Does not cap the region count: pages/api/tmdb/discover.ts already caps at
 // MAX_DISCOVER_REGIONS server-side, so duplicating the cap here would just be
@@ -156,6 +180,9 @@ export function buildDiscoverQuery(
 
   if (countries.length === 0 || services.length === 0) return null;
 
+  const regionCodes = canonicalizeRegionSet(countries);
+  if (!regionCodes) return null;
+
   const providerIds = [...new Set(
     services
       .map((service) => service.id)
@@ -164,7 +191,7 @@ export function buildDiscoverQuery(
 
   if (providerIds.length === 0 || providerIds.length > MAX_DISCOVER_PROVIDERS) return null;
 
-  const regions = encodeURIComponent(countries.join(","));
+  const regions = encodeURIComponent(regionCodes.join(","));
   const providers = encodeURIComponent(providerIds.join("|"));
 
   return `/api/tmdb/discover?regions=${regions}&providers=${providers}`;

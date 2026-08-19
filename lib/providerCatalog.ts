@@ -41,6 +41,16 @@ export function parseRegions(raw: unknown): string[] | null {
   return [...new Set(parts.map((part) => part.toUpperCase()))];
 }
 
+/** Validates and returns one deterministic representation for a region set. */
+export function canonicalizeRegionSet(regions: string[]): string[] | null {
+  const normalized = regions.map((region) => region.trim());
+  if (normalized.length === 0 || !normalized.every((region) => ALPHA_2.test(region))) {
+    return null;
+  }
+
+  return [...new Set(normalized.map((region) => region.toUpperCase()))].sort();
+}
+
 /**
  * Merges the movie and TV provider catalogs into one deduped list, keeping only
  * providers offered in at least one requested region.
